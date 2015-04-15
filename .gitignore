@@ -1,0 +1,6 @@
+*.txt
+*~
+*.o
+CMakeFiles/
+cmake*
+Makefile

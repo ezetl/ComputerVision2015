@@ -5,7 +5,7 @@
 
 #define SIGMA 2.0
 #define K_ 0.04
-#define TRESHOLD 2000
+#define THRESHOLD 2000
 
 typedef unsigned char Byte;
 
@@ -30,7 +30,7 @@ void gradientSobel(cv::Mat& img, cv::Mat& img_x, cv::Mat& img_y) {
     float* img_x_1 = img_x.ptr<float>(i);
     float* img_y_1 = img_y.ptr<float>(i);
 
-    for (int j = 1; j < img.cols - 1; ++j) {
+    for (int j = 1; j < img.cols-1; ++j) {
       img_x_1[j] = - img_0[j - 1] + img_0[j + 1] - 2.0 * img_1[j - 1] +
           2.0 * img_1[j + 1] - img_2[j - 1] + img_2[j + 1];
 
@@ -40,6 +40,38 @@ void gradientSobel(cv::Mat& img, cv::Mat& img_x, cv::Mat& img_y) {
   }
 }
 
+void gradientSobel_zeropadding(cv::Mat& img, cv::Mat& img_x, cv::Mat& img_y) {
+  // gradiente en X
+  assert((img.rows == img_x.rows) && (img.cols == img_x.cols) && \
+         (img.cols == img_y.cols) && (img.cols == img_y.cols));
+
+  // EJERCICIO 1:
+  // - implementar "zero padding" en el cómputo del gradiente
+  // - analizar correlacion vs. convolución
+  cv::Mat padding(img.rows, img.cols, CV_32FC1);
+  copyMakeBorder(img, padding, 1, 1, 1, 1, BORDER_CONSTANT, cv::Scalar(0));
+
+  // EJERCICIO 3
+  // - cómputo usando máscaras separables
+  // * implementar como kernel en GPU
+
+  for (int i = 0; i < img.rows; ++i) {
+    float* img_0 = padding.ptr<float>(i - 1);
+    float* img_1 = padding.ptr<float>(i);
+    float* img_2 = padding.ptr<float>(i + 1);
+
+    float* img_x_1 = img_x.ptr<float>(i);
+    float* img_y_1 = img_y.ptr<float>(i);
+
+    for (int j = 0; j < img.cols; ++j) {
+      img_x_1[j] = - img_0[j - 1] + img_0[j + 1] - 2.0 * img_1[j - 1] +
+          2.0 * img_1[j + 1] - img_2[j - 1] + img_2[j + 1];
+
+      img_y_1[j] = - img_0[j - 1] - 2.0 * img_0[j] - img_0[j + 1] +
+          img_2[j - 1] + 2.0 * img_2[j] + img_2[j + 1];
+    }
+  }
+}
 void local_maxima_3x3(cv::Mat& img, std::vector<cv::Point>& points) {
   points.clear();
   for (int i = 1; i < img.rows - 1; ++i) {
@@ -99,7 +131,8 @@ int main(int argc, char** argv )
   // cómputo de derivadas espaciales
   cv::Mat im_x(image.rows, image.cols, CV_32FC1);
   cv::Mat im_y(image.rows, image.cols, CV_32FC1);
-  gradientSobel(gray_, im_x, im_y);
+  gradientSobel_zeropadding(gray_, im_x, im_y);
+  //gradientSobel(gray_, im_x, im_y);
 
   cv::Mat a11 = im_x.mul(im_x);
   cv::Mat a12 = im_x.mul(im_y);
@@ -142,7 +175,6 @@ int main(int argc, char** argv )
   print_features(features, harris_corners);
   cv::namedWindow("Features", cv::WINDOW_AUTOSIZE);
   cv::imshow("Features", features);
-  cv::imwrite("features.tiff", features);
 
   cv::waitKey(0);
 
