@@ -15,9 +15,7 @@ void gradientSobel(cv::Mat& img, cv::Mat& img_x, cv::Mat& img_y) {
   assert((img.rows == img_x.rows) && (img.cols == img_x.cols) && \
          (img.cols == img_y.cols) && (img.cols == img_y.cols));
 
-  // EJERCICIO 1:
-  // - implementar "zero padding" en el cómputo del gradiente
-  // - analizar correlacion vs. convolución
+  // zero padding
   cv::Mat padding(img.rows, img.cols, CV_32FC1);
   copyMakeBorder(img, padding, 1, 1, 1, 1, IPL_BORDER_CONSTANT, cv::Scalar(0));
 
@@ -26,14 +24,15 @@ void gradientSobel(cv::Mat& img, cv::Mat& img_x, cv::Mat& img_y) {
     float* img_1 = padding.ptr<float>(i);
     float* img_2 = padding.ptr<float>(i + 1);
 
-    float* img_x_1 = img_x.ptr<float>(i);
-    float* img_y_1 = img_y.ptr<float>(i);
+    // le resto la columna agregada por el padding
+    float* img_x_1 = img_x.ptr<float>(i-1);
+    float* img_y_1 = img_y.ptr<float>(i-1);
 
     for (int j = 1; j < padding.cols-1; ++j) {
-      img_x_1[j] = - img_0[j - 1] + img_0[j + 1] - 2.0 * img_1[j - 1] +
+      img_x_1[j-1] = - img_0[j - 1] + img_0[j + 1] - 2.0 * img_1[j - 1] +
           2.0 * img_1[j + 1] - img_2[j - 1] + img_2[j + 1];
 
-      img_y_1[j] = - img_0[j - 1] - 2.0 * img_0[j] - img_0[j + 1] +
+      img_y_1[j-1] = - img_0[j - 1] - 2.0 * img_0[j] - img_0[j + 1] +
           img_2[j - 1] + 2.0 * img_2[j] + img_2[j + 1];
     }
   }
@@ -44,6 +43,7 @@ void gradientSobel_2masks(cv::Mat& img, cv::Mat& img_x, cv::Mat& img_y) {
   assert((img.rows == img_x.rows) && (img.cols == img_x.cols) && \
          (img.cols == img_y.cols) && (img.cols == img_y.cols));
 
+  // zero padding
   cv::Mat padding(img.rows, img.cols, CV_32FC1);
   copyMakeBorder(img, padding, 1, 1, 1, 1, IPL_BORDER_CONSTANT, cv::Scalar(0));
 
@@ -56,10 +56,9 @@ void gradientSobel_2masks(cv::Mat& img, cv::Mat& img_x, cv::Mat& img_y) {
   // unidimensionales (reducir cantidad de
   // computos y cache misses).
 
+  //1er pasada
   for (int i = 1; i < padding.rows-1; ++i) {
-    float* img_0 = padding.ptr<float>(i - 1);
     float* img_1 = padding.ptr<float>(i);
-    float* img_2 = padding.ptr<float>(i + 1);
 
     float* aux_x_1 = aux_x.ptr<float>(i);
     float* aux_y_1 = aux_y.ptr<float>(i);
@@ -69,12 +68,13 @@ void gradientSobel_2masks(cv::Mat& img, cv::Mat& img_x, cv::Mat& img_y) {
       aux_y_1[j] = img_1[j - 1] + 2.0 * img_1[j] + img_1[j + 1];
     }
   }
+
+  // 2da pasada
   for (int i = 1; i < padding.rows-1; ++i) {
     float* img_0_x = aux_x.ptr<float>(i - 1);
     float* img_1_x = aux_x.ptr<float>(i);
     float* img_2_x = aux_x.ptr<float>(i + 1);
     float* img_0_y = aux_y.ptr<float>(i - 1);
-    float* img_1_y = aux_y.ptr<float>(i);
     float* img_2_y = aux_y.ptr<float>(i + 1);
 
     float* img_x_1 = img_x.ptr<float>(i-1);
@@ -140,11 +140,11 @@ int main(int argc, char** argv )
   // sacar un poco mas de ruido
   //GaussianBlur(gray, gray, cv::Size(), SIGMA1, SIGMA1, cv::BORDER_DEFAULT);
 
-  // uint8 -> float (¿PR QUE?)
+  // uint8 -> float
   cv::Mat gray_(image.rows, image.cols, CV_32FC1);
   gray.convertTo(gray_, CV_32F);
 
-  // co�mputo de derivadas espaciales
+  // computo de derivadas espaciales
   cv::Mat im_x(image.rows, image.cols, CV_32FC1);
   cv::Mat im_y(image.rows, image.cols, CV_32FC1);
   gradientSobel_2masks(gray_, im_x, im_y);
@@ -171,7 +171,6 @@ int main(int argc, char** argv )
   // non-maxima supression (NMS)
   std::vector<cv::Point> harris_corners;
   local_maxima_3x3(R, harris_corners);
-  std::cout<<"harris corners size: "<<harris_corners.size()<<std::endl;
 
   // R al rango [0, 1] antes de visualizar
   double min;
