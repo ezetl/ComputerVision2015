@@ -2,6 +2,11 @@
 #include <opencv2/opencv.hpp>
 #include <vector>
 #include <cassert>
+#include <omp.h>
+
+/*
+g++ -o HarrisCorners  HarrisCorners.cpp -lopencv_core -lopencv_imgproc -lopencv_highgui -lgomp
+ */
 
 #define SIGMA 9.0
 #define SIGMA1 2.0
@@ -19,6 +24,7 @@ void gradientSobel(cv::Mat& img, cv::Mat& img_x, cv::Mat& img_y) {
   cv::Mat padding(img.rows, img.cols, CV_32FC1);
   copyMakeBorder(img, padding, 1, 1, 1, 1, IPL_BORDER_CONSTANT, cv::Scalar(0));
 
+  # pragma omp parallel for shared(padding, img_x, img_y)
   for (int i = 1; i < padding.rows-1; ++i) {
     float* img_0 = padding.ptr<float>(i - 1);
     float* img_1 = padding.ptr<float>(i);
@@ -57,6 +63,7 @@ void gradientSobel_2masks(cv::Mat& img, cv::Mat& img_x, cv::Mat& img_y) {
   // computos y cache misses).
 
   //1er pasada
+  # pragma omp parallel for 
   for (int i = 1; i < padding.rows-1; ++i) {
     float* img_1 = padding.ptr<float>(i);
 
@@ -70,6 +77,7 @@ void gradientSobel_2masks(cv::Mat& img, cv::Mat& img_x, cv::Mat& img_y) {
   }
 
   // 2da pasada
+  # pragma omp parallel for 
   for (int i = 1; i < padding.rows-1; ++i) {
     float* img_0_x = aux_x.ptr<float>(i - 1);
     float* img_1_x = aux_x.ptr<float>(i);
@@ -144,17 +152,25 @@ int main(int argc, char** argv )
   cv::Mat gray_(image.rows, image.cols, CV_32FC1);
   gray.convertTo(gray_, CV_32F);
 
+  cv::Mat im_x(image.rows, image.cols, CV_32FC1);
+  cv::Mat im_y(image.rows, image.cols, CV_32FC1);
+  double elapsed = 0.0;
+  double begin = omp_get_wtime();
   // computo de derivadas espaciales
+  for(int i=0; i<1000;++i){
   cv::Mat im_x(image.rows, image.cols, CV_32FC1);
   cv::Mat im_y(image.rows, image.cols, CV_32FC1);
   gradientSobel_2masks(gray_, im_x, im_y);
   //gradientSobel(gray_, im_x, im_y);
+  }
+  elapsed = omp_get_wtime() - begin;
+  std::cout<<"Elapsed time for GradientSobel: "<<elapsed<<std::endl;
 
   cv::Mat a11 = im_x.mul(im_x);
   cv::Mat a12 = im_x.mul(im_y);
   cv::Mat a22 = im_y.mul(im_y);
 
-  // integracio³n oocal = Gaussian blur
+  // integracion local = Gaussian blur
   cv::Mat a11w(image.rows, image.cols, CV_32FC1);
   cv::Mat a12w(image.rows, image.cols, CV_32FC1);
   cv::Mat a22w(image.rows, image.cols, CV_32FC1);
@@ -162,7 +178,7 @@ int main(int argc, char** argv )
   GaussianBlur(a12, a12w, cv::Size(), SIGMA, SIGMA, cv::BORDER_DEFAULT);
   GaussianBlur(a22, a22w, cv::Size(), SIGMA, SIGMA, cv::BORDER_DEFAULT);
 
-  // cÃ³mputo de fnncoÃ³n R
+  // computo de funcion R
   cv::Mat R = a11w.mul(a22w) - a12w.mul(a12w) - K_ * (a11w + a22w).mul(a11w + a22w);
 
   // umbralizado
@@ -181,6 +197,7 @@ int main(int argc, char** argv )
   cv::minMaxIdx(R_, &min, &max);
 
   // visualizacio³n
+  /*
   cv::namedWindow("Image", cv::WINDOW_AUTOSIZE);
   cv::imshow("Image", image);
 
@@ -191,6 +208,7 @@ int main(int argc, char** argv )
   print_features(features, harris_corners);
   cv::namedWindow("Features", cv::WINDOW_AUTOSIZE);
   cv::imshow("Features", features);
+  */
 
   cv::waitKey(0);
 
