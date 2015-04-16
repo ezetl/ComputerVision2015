@@ -47,7 +47,7 @@ void gradientSobel(cv::Mat& img, cv::Mat& img_x, cv::Mat& img_y) {
 }
 
 
-void gradientSobel_2masks(cv::Mat& img, cv::Mat& img_x, cv::Mat& img_y) {
+void gradientSobel_separable(cv::Mat& img, cv::Mat& img_x, cv::Mat& img_y) {
   assert((img.rows == img_x.rows) && (img.cols == img_x.cols) && \
          (img.cols == img_y.cols) && (img.cols == img_y.cols));
 
@@ -151,7 +151,7 @@ int main(int argc, char** argv )
   cv::Mat im_x(image.rows, image.cols, CV_32FC1);
   cv::Mat im_y(image.rows, image.cols, CV_32FC1);
   // computo de derivadas espaciales
-  gradientSobel_2masks(gray_, im_x, im_y);
+  gradientSobel_separable(gray_, im_x, im_y);
   //gradientSobel(gray_, im_x, im_y);
 
   cv::Mat a11 = im_x.mul(im_x);
