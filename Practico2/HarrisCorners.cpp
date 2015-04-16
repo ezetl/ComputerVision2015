@@ -24,7 +24,9 @@ void gradientSobel(cv::Mat& img, cv::Mat& img_x, cv::Mat& img_y) {
   cv::Mat padding(img.rows, img.cols, CV_32FC1);
   copyMakeBorder(img, padding, 1, 1, 1, 1, IPL_BORDER_CONSTANT, cv::Scalar(0));
 
-  # pragma omp parallel for shared(padding, img_x, img_y)
+  // Se puede usar OpenMP para acelerar un poco las cosas.
+  // Descomentar la linea de abajo para usar OpenMP:
+  //# pragma omp parallel for shared(padding, img_x, img_y)
   for (int i = 1; i < padding.rows-1; ++i) {
     float* img_0 = padding.ptr<float>(i - 1);
     float* img_1 = padding.ptr<float>(i);
@@ -55,15 +57,9 @@ void gradientSobel_2masks(cv::Mat& img, cv::Mat& img_x, cv::Mat& img_y) {
 
   cv::Mat aux_x(padding.rows, padding.cols, CV_32FC1);
   cv::Mat aux_y(padding.rows, padding.cols, CV_32FC1);
-  // EJERCICIO 3
-  // - computo usando mascaras separables
-  // La idea es implementar el fitro de Sobel
-  // como dos operaciones de filtros
-  // unidimensionales (reducir cantidad de
-  // computos y cache misses).
 
   //1er pasada
-  # pragma omp parallel for 
+  //# pragma omp parallel for 
   for (int i = 1; i < padding.rows-1; ++i) {
     float* img_1 = padding.ptr<float>(i);
 
@@ -77,7 +73,7 @@ void gradientSobel_2masks(cv::Mat& img, cv::Mat& img_x, cv::Mat& img_y) {
   }
 
   // 2da pasada
-  # pragma omp parallel for 
+  //# pragma omp parallel for 
   for (int i = 1; i < padding.rows-1; ++i) {
     float* img_0_x = aux_x.ptr<float>(i - 1);
     float* img_1_x = aux_x.ptr<float>(i);
@@ -128,7 +124,7 @@ void print_features(cv::Mat& dest, std::vector<cv::Point>& points)
 
 int main(int argc, char** argv )
 {
-  if (argc != 2) {
+  if (argc != 3) {
     std::cout << "usage: HarrisCorners <Image_Path>" << std::endl;
     return -1;
   }
@@ -145,7 +141,7 @@ int main(int argc, char** argv )
   cv::Mat gray;
   cv::cvtColor(image, gray, CV_BGR2GRAY);
 
-  // sacar un poco mas de ruido
+  // Descomentar para sacar un poco mas de ruido:
   //GaussianBlur(gray, gray, cv::Size(), SIGMA1, SIGMA1, cv::BORDER_DEFAULT);
 
   // uint8 -> float
@@ -154,17 +150,9 @@ int main(int argc, char** argv )
 
   cv::Mat im_x(image.rows, image.cols, CV_32FC1);
   cv::Mat im_y(image.rows, image.cols, CV_32FC1);
-  double elapsed = 0.0;
-  double begin = omp_get_wtime();
   // computo de derivadas espaciales
-  for(int i=0; i<1000;++i){
-  cv::Mat im_x(image.rows, image.cols, CV_32FC1);
-  cv::Mat im_y(image.rows, image.cols, CV_32FC1);
   gradientSobel_2masks(gray_, im_x, im_y);
   //gradientSobel(gray_, im_x, im_y);
-  }
-  elapsed = omp_get_wtime() - begin;
-  std::cout<<"Elapsed time for GradientSobel: "<<elapsed<<std::endl;
 
   cv::Mat a11 = im_x.mul(im_x);
   cv::Mat a12 = im_x.mul(im_y);
@@ -196,8 +184,7 @@ int main(int argc, char** argv )
   R.convertTo(R_, CV_32FC1, 1.0 / (max - min), -min / (max - min));
   cv::minMaxIdx(R_, &min, &max);
 
-  // visualizacio³n
-  /*
+  // Visualizacion
   cv::namedWindow("Image", cv::WINDOW_AUTOSIZE);
   cv::imshow("Image", image);
 
@@ -208,7 +195,6 @@ int main(int argc, char** argv )
   print_features(features, harris_corners);
   cv::namedWindow("Features", cv::WINDOW_AUTOSIZE);
   cv::imshow("Features", features);
-  */
 
   cv::waitKey(0);
 
