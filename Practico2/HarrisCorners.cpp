@@ -11,7 +11,7 @@ g++ -o HarrisCorners  HarrisCorners.cpp -lopencv_core -lopencv_imgproc -lopencv_
 #define SIGMA 9.0
 #define SIGMA1 2.0
 #define K_ 0.04
-#define THRESHOLD 100.0
+#define THRESHOLD 500.0
 
 typedef unsigned char Byte;
 
@@ -62,30 +62,22 @@ void gradientSobel_separable(cv::Mat& img, cv::Mat& img_x, cv::Mat& img_y) {
   //# pragma omp parallel for 
   for (int i = 1; i < padding.rows-1; ++i) {
     float* img_1 = padding.ptr<float>(i);
-
-    float* aux_x_1 = aux_x.ptr<float>(i);
-    float* aux_y_1 = aux_y.ptr<float>(i);
-
+    float* img_x_1 = img_x.ptr<float>(i-1);
     for (int j = 1; j < padding.cols-1; ++j) {
-      aux_x_1[j] = - img_1[j - 1] + img_1[j + 1]; 
-      aux_y_1[j] = img_1[j - 1] + 2.0 * img_1[j] + img_1[j + 1];
+      float aux = - img_1[j - 1] + img_1[j + 1];
+      img_1[j] = aux; 
+      img_x_1[j-1] = aux;
     }
   }
 
   // 2da pasada
   //# pragma omp parallel for 
   for (int i = 1; i < padding.rows-1; ++i) {
-    float* img_0_x = aux_x.ptr<float>(i - 1);
-    float* img_1_x = aux_x.ptr<float>(i);
-    float* img_2_x = aux_x.ptr<float>(i + 1);
-    float* img_0_y = aux_y.ptr<float>(i - 1);
-    float* img_2_y = aux_y.ptr<float>(i + 1);
-
-    float* img_x_1 = img_x.ptr<float>(i-1);
+    float* img_0_y = padding.ptr<float>(i - 1);
+    float* img_2_y = padding.ptr<float>(i + 1);
     float* img_y_1 = img_y.ptr<float>(i-1);
 
     for (int j = 1; j < padding.cols-1; ++j) {
-      img_x_1[j-1] = img_0_x[j] + 2.0 * img_1_x[j] + img_2_x[j]; 
       img_y_1[j-1] = - img_0_y[j] + img_2_y[j + 1];
     }
   }
@@ -124,7 +116,7 @@ void print_features(cv::Mat& dest, std::vector<cv::Point>& points)
 
 int main(int argc, char** argv )
 {
-  if (argc != 3) {
+  if (argc != 2) {
     std::cout << "usage: HarrisCorners <Image_Path>" << std::endl;
     return -1;
   }
@@ -142,7 +134,7 @@ int main(int argc, char** argv )
   cv::cvtColor(image, gray, CV_BGR2GRAY);
 
   // Descomentar para sacar un poco mas de ruido:
-  //GaussianBlur(gray, gray, cv::Size(), SIGMA1, SIGMA1, cv::BORDER_DEFAULT);
+  GaussianBlur(gray, gray, cv::Size(), SIGMA1, SIGMA1, cv::BORDER_DEFAULT);
 
   // uint8 -> float
   cv::Mat gray_(image.rows, image.cols, CV_32FC1);
@@ -151,8 +143,8 @@ int main(int argc, char** argv )
   cv::Mat im_x(image.rows, image.cols, CV_32FC1);
   cv::Mat im_y(image.rows, image.cols, CV_32FC1);
   // computo de derivadas espaciales
-  gradientSobel_separable(gray_, im_x, im_y);
-  //gradientSobel(gray_, im_x, im_y);
+  //gradientSobel_separable(gray_, im_x, im_y);
+  gradientSobel(gray_, im_x, im_y);
 
   cv::Mat a11 = im_x.mul(im_x);
   cv::Mat a12 = im_x.mul(im_y);
