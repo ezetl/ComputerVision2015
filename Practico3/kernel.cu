@@ -1,5 +1,10 @@
+#include <opencv2/opencv.hpp>
 
 #include "kernel.h"
+
+/*
+   nvcc -c kernel.cu && 
+ */
 
 size_t width;
 size_t height;
@@ -107,7 +112,7 @@ __global__ void cwiseProduct(const float* const matrix1,
     const unsigned int y = blockIdx.y * blockDim.y + threadIdx.y;
     if((x > 0) && (x < (height - 1)) && (y > 0) && (y < (width - 1)))
     {
-        output[y * width + x] = matrix1[y * width + x] * matrix2[y * width + x]
+        output[y * width + x] = matrix1[y * width + x] * matrix2[y * width + x];
     }
     else
     {
@@ -137,7 +142,7 @@ __global__ void calculate_k_product(const float * const __restrict__ matrix1,
     }
 }
 
-__global__ void calculate_diff(const float * const __restrict__ matrix1,
+__global__ void calculate_diff(float * const __restrict__ matrix1,
                                const float * const __restrict__ matrix2,
                                const float * const __restrict__ matrix3,
                                const size_t width,
@@ -156,10 +161,10 @@ __global__ void calculate_diff(const float * const __restrict__ matrix1,
     }
 }
 
-__global__ void threshold(float * const R,
-                         const float threshold,
-                         const size_t width,
-                         const size_t height)
+__global__ void threshold_cuda(float * const R,
+                               const float threshold,
+                               const size_t width,
+                               const size_t height)
 {
     // THRESH_TOZERO
     const unsigned int x = blockIdx.x * blockDim.x + threadIdx.x;
@@ -175,6 +180,63 @@ __global__ void threshold(float * const R,
     {
       R[y * width + x] = 0.0f;
     }
+}
+
+__global__ void nonMaximaSupression_cuda(const float * const __restrict__ input,
+                                         float * const __restrict__ features,
+                                         const size_t width,
+                                         const size_t height)
+{
+    const unsigned int x = blockIdx.x * blockDim.x + threadIdx.x;
+    const unsigned int y = blockIdx.y * blockDim.y + threadIdx.y;
+
+    Byte neighbours[8]; //todos menos si mismo
+
+    if((x > 0) && (x < (height - 1)) && (y > 0) && (y < (width - 1)))
+    {
+        neighbours[0]  = input[(y - 1) * width + (x - 1)];
+        neighbours[1]  = input[(y - 1) * width + x];
+        neighbours[2]  = input[(y - 1) * width +  (x + 1)];
+        neighbours[3]  = input[y * width + (x - 1)];
+        neighbours[4]  = input[y * width + (x + 1)];
+        neighbours[5]  = input[(y + 1) * width + (x - 1)];
+        neighbours[6]  = input[(y + 1) * width + x];
+        neighbours[7]  = input[(y + 1) * width + (x + 1)];
+
+        int is_max = 1;
+        for (unsigned int it = 0; it < 8 && is_max; ++it)
+              is_max = neighbours[it] < input[y * width + x];
+
+        if(is_max){
+            features[y * width + x] = input[y * width + x];
+        }
+        else
+        {
+            features[y * width + x] = 0.0f;
+        }
+    }
+    else
+        features[y * width + x] = 0.0f;
+}
+
+__global__ void normalize_R(float * const __restrict__ R,
+                            const float max,
+                            const float min,
+                            const size_t width,
+                            const size_t height)
+{
+  const unsigned int x = blockIdx.x * blockDim.x + threadIdx.x;
+  const unsigned int y = blockIdx.y * blockDim.y + threadIdx.y;
+
+  if((x > 0) && (x < (height - 1)) && (y > 0) && (y < (width - 1)))
+  {
+      R[y * width + x] = R[y * width + x] * (1.0 / (max - min)) - min / (max - min);
+  }
+  else
+  {
+      R[y * width + x] = 0.0f;
+  }
+
 }
 
 void harrisCornersFilter(const float* const image,
@@ -366,78 +428,27 @@ void threshold()
 //TODO Ejercicio 3 calcular el umbral a R (cudaOutputAux)
   dim3 blockSize(BLOCK_SIZE_X, BLOCK_SIZE_Y);
   dim3 gridSize(width / BLOCK_SIZE_X, height / BLOCK_SIZE_Y);
-  threshold<<<gridSize, blockSize>>>(cudaOutputAux,
-                                     threshold,
-                                     width,
-                                     height);
+  float thresh = 100.0;
+  threshold_cuda<<<gridSize, blockSize>>>(cudaOutputAux,
+                                          thresh,
+                                          width,
+                                          height);
 }
 
-__global__ void nonMaximaSupression(const float * const __restrict__ input,
-                                    const int * const __restrict__ features,
-                                    const size_t width,
-                                    const size_t height)
-{
-    const unsigned int x = blockIdx.x * blockDim.x + threadIdx.x;
-    const unsigned int y = blockIdx.y * blockDim.y + threadIdx.y;
 
-    Byte neighbours[8]; //todos menos si mismo
-
-    if((x > 0) && (x < (height - 1)) && (y > 0) && (y < (width - 1)))
-    {
-        neighbours[0]  = input[(y - 1) * width + (x - 1)];
-        neighbours[1]  = input[(y - 1) * width + x];
-        neighbours[2]  = input[(y - 1) * width +  (x + 1)];
-        neighbours[3]  = input[y * width + (x - 1)];
-        neighbours[4]  = input[y * width + (x + 1)];
-        neighbours[5]  = input[(y + 1) * width + (x - 1)];
-        neighbours[6]  = input[(y + 1) * width + x];
-        neighbours[7]  = input[(y + 1) * width + (x + 1)];
-
-        int is_max = 1;
-        for (unsigned int it = 0; it < 8 && is_max; ++it)
-              is_max = neighbours[it] < input[y * width + x];
-
-        if(is_max){
-            features[y * width + x] = input[y * width + x];
-        }
-        else
-        {
-            features[y * width + x] = 0.0f;
-        }
-    }
-    else
-        features[y * width + x] = 0.0f;
-}
-
-__global__ void normalize_R(float * const __restrict__ R,
-                            const float max,
-                            const float min,
-                            const size_t width,
-                            const size_t height)
-{
-  const unsigned int x = blockIdx.x * blockDim.x + threadIdx.x;
-  const unsigned int y = blockIdx.y * blockDim.y + threadIdx.y;
-
-  if((x > 0) && (x < (height - 1)) && (y > 0) && (y < (width - 1)))
-  {
-      R[y * width + x] = R[y * width + x] * (1.0 / (max - min)) - min / (max - min);
-  }
-  else
-  {
-      R[y * width + x] = 0.0f;
-  }
-
-}
 
 void nonMaximaSupression()
 {
+  dim3 blockSize(BLOCK_SIZE_X, BLOCK_SIZE_Y);
+  dim3 gridSize(width / BLOCK_SIZE_X, height / BLOCK_SIZE_Y);
   //TODO Ejercicio 4 calcular NMS a R (cudaOutputAux) y dejar R en el rango [0, 1]
-  nonMaximaSupression<<<gridSize, blockSize>>>(cudaOutputAux,
+  nonMaximaSupression_cuda<<<gridSize, blockSize>>>(cudaOutputAux,
                                                cuda_features,
                                                width,
                                                height);
   //TODO: implementar el reduce en CUDA
-  cudaMemcpy(output, cudaOutputAux, width * height * sizeof(float), cudaMemcpyDeviceToHost);
+  cv::Mat R(width, height, CV_32FC1);
+  cudaMemcpy(R.ptr<float>(), cudaOutputAux, width * height * sizeof(float), cudaMemcpyDeviceToHost);
   double min;
   double max;
   cv::minMaxIdx(R, &min, &max);
@@ -446,5 +457,5 @@ void nonMaximaSupression()
                                        min,
                                        max,
                                        width,
-                                       height)
+                                       height);
 }
