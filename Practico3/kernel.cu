@@ -1,18 +1,22 @@
 
 #include "kernel.h"
 
-    size_t width;
-    size_t height;
-    float* cudaInput;
-    float* cudaOutputX;
-    float* cudaOutputY;
-    float* cudaOutputAux;
-    float* gaussianKernelCuda;
-    float* cudaSobelX;
-    float* cudaSobelY;
-    float* cudaA_X_X;
-    float* cudaA_X_Y;
-    float* cudaA_Y_Y;
+size_t width;
+size_t height;
+float* cudaInput;
+float* cudaOutputX;
+float* cudaOutputY;
+float* cudaOutputAux;
+float* cudaOutputAux2;
+float* cudaOutputAux3;
+float* gaussianKernelCuda;
+float* cudaSobelX;
+float* cudaSobelY;
+float* cudaA_X_X;
+float* cudaA_X_Y;
+float* cudaA_Y_Y;
+float* cuda_R;
+float* cuda_features;
 
 
 __global__ void gaussianBlurKernel(const float* const __restrict__ input,
@@ -21,7 +25,7 @@ __global__ void gaussianBlurKernel(const float* const __restrict__ input,
                                    const size_t height,
                                    const float* const __restrict__ gaussianKernel)
 {
-//x and y maxs are width and height
+    //x and y maxs are width and height
     const unsigned int x = blockIdx.x * blockDim.x + threadIdx.x;
     const unsigned int y = blockIdx.y * blockDim.y + threadIdx.y;
 
@@ -57,7 +61,7 @@ __global__ void sobelKernel(const float* const __restrict__ input,
                             const float* const __restrict__ sobelKernelX,
                             const float* const __restrict__ sobelKernelY)
 {
-//x and y maxs are width and height
+    //x and y maxs are width and height
     const unsigned int x = blockIdx.x * blockDim.x + threadIdx.x;
     const unsigned int y = blockIdx.y * blockDim.y + threadIdx.y;
 
@@ -94,12 +98,83 @@ __global__ void sobelKernel(const float* const __restrict__ input,
 };
 
 __global__ void cwiseProduct(const float* const matrix1,
-                           const float* const matrix2,
-                           float* const output,
-                           const size_t width,
-                           const size_t height)
+                             const float* const matrix2,
+                             float* const output,
+                             const size_t width,
+                             const size_t height)
 {
-//TODO Ejercicio 1 Hacer el kernel para hacer el producto punto a punto
+    const unsigned int x = blockIdx.x * blockDim.x + threadIdx.x;
+    const unsigned int y = blockIdx.y * blockDim.y + threadIdx.y;
+    if((x > 0) && (x < (height - 1)) && (y > 0) && (y < (width - 1)))
+    {
+        output[y * width + x] = matrix1[y * width + x] * matrix2[y * width + x]
+    }
+    else
+    {
+        output[y * width + x] = 0.0f;
+    }
+
+}
+
+__global__ void calculate_k_product(const float * const __restrict__ matrix1,
+                                    const float * const __restrict__ matrix2,
+                                    const float k,
+                                    float * const __restrict__ output,
+                                    const size_t width,
+                                    const size_t height)
+{
+    const unsigned int x = blockIdx.x * blockDim.x + threadIdx.x;
+    const unsigned int y = blockIdx.y * blockDim.y + threadIdx.y;
+
+    if((x > 0) && (x < (height - 1)) && (y > 0) && (y < (width - 1)))
+    {
+        float aux = matrix1[y * width + x] + matrix2[y * width + x];
+        output[y * width + x] = k * aux * aux; 
+    }
+    else
+    {
+        output[y * width + x] = 0.0f;
+    }
+}
+
+__global__ void calculate_diff(const float * const __restrict__ matrix1,
+                               const float * const __restrict__ matrix2,
+                               const float * const __restrict__ matrix3,
+                               const size_t width,
+                               const size_t height)
+{
+    const unsigned int x = blockIdx.x * blockDim.x + threadIdx.x;
+    const unsigned int y = blockIdx.y * blockDim.y + threadIdx.y;
+
+    if((x > 0) && (x < (height - 1)) && (y > 0) && (y < (width - 1)))
+    {
+        matrix1[y * width + x] = matrix1[y * width + x] - matrix2[y * width + x] - matrix3[y * width + x]; 
+    }
+    else
+    {
+        matrix1[y * width + x] = 0.0f;
+    }
+}
+
+__global__ void threshold(float * const R,
+                         const float threshold,
+                         const size_t width,
+                         const size_t height)
+{
+    // THRESH_TOZERO
+    const unsigned int x = blockIdx.x * blockDim.x + threadIdx.x;
+    const unsigned int y = blockIdx.y * blockDim.y + threadIdx.y;
+    if((x > 0) && (x < (height - 1)) && (y > 0) && (y < (width - 1)))
+    {
+      if(R[y * width + x] < threshold)
+      {
+        R[y * width + x] = 0.0f; 
+      }
+    }
+    else
+    {
+      R[y * width + x] = 0.0f;
+    }
 }
 
 void harrisCornersFilter(const float* const image,
@@ -108,7 +183,7 @@ void harrisCornersFilter(const float* const image,
                          const float* const gaussianKernel,
                          float* output)
 {
-//Inicializacion de memoria
+    //Inicializacion de memoria
 
     width = imageWidth;
     height = imageHeight;
@@ -121,9 +196,13 @@ void harrisCornersFilter(const float* const image,
     cudaMalloc(reinterpret_cast<void**>(&cudaOutputX), width * height * sizeof(float));
     cudaMalloc(reinterpret_cast<void**>(&cudaOutputY), width * height * sizeof(float));
     cudaMalloc(reinterpret_cast<void**>(&cudaOutputAux), width * height * sizeof(float));
+    cudaMalloc(reinterpret_cast<void**>(&cudaOutputAux2), width * height * sizeof(float));
+    cudaMalloc(reinterpret_cast<void**>(&cudaOutputAux3), width * height * sizeof(float));
     cudaMalloc(reinterpret_cast<void**>(&cudaA_X_X), width * height * sizeof(float));
     cudaMalloc(reinterpret_cast<void**>(&cudaA_X_Y), width * height * sizeof(float));
     cudaMalloc(reinterpret_cast<void**>(&cudaA_Y_Y), width * height * sizeof(float));
+    cudaMalloc(reinterpret_cast<void**>(&cuda_R), width * height * sizeof(float));
+    cudaMalloc(reinterpret_cast<void**>(&cuda_features), width * height * sizeof(float));
 
     float sobelKernelX[] = {-1.0f, 0.0f, 1.0f,
                             -2.0f, 0.0f, 2.0f,
@@ -180,12 +259,15 @@ void harrisCornersFilter(const float* const image,
     cudaFree(cudaOutputX);
     cudaFree(cudaOutputY);
     cudaFree(cudaOutputAux);
+    cudaFree(cudaOutputAux3);
+    cudaFree(cudaOutputAux2);
     cudaFree(gaussianKernelCuda);
     cudaFree(cudaSobelX);
     cudaFree(cudaSobelY);
     cudaFree(cudaA_X_X);
     cudaFree(cudaA_X_Y);
     cudaFree(cudaA_Y_Y);
+    cudaFree(cuda_features);
 }
 
 void gaussianBlurCuda(const float* const input,
@@ -246,19 +328,96 @@ void calculateA()
 void calculateR()
 {
 //TODO Ejercicio 2 hacer el kernel para calcular R con la siguiente funcion y llamarlo.
-//tip: usar el kernel producto punto del ejercicio 1
-    const float k = 0.04f;
-//    R(cudaOutputAux) = cudaA_X_X * cudaA_Y_Y -
-//                       cudaA_X_Y * cudaA_X_Y -
-//                       k * (cudaA_X_X + cudaA_Y_Y) * (cudaA_X_X + cudaA_Y_Y);
+  // Guarda el resultado en  cudaOutputAux
+  dim3 blockSize(BLOCK_SIZE_X, BLOCK_SIZE_Y);
+  dim3 gridSize(width / BLOCK_SIZE_X, height / BLOCK_SIZE_Y);
+  const float k = 0.04f;
+
+  cwiseProduct<<<gridSize, blockSize>>>(cudaA_X_X,
+                                        cudaA_Y_Y,
+                                        cudaOutputAux,
+                                        width,
+                                        height);
+
+  cwiseProduct<<<gridSize, blockSize>>>(cudaA_X_Y,
+                                        cudaA_X_Y,
+                                        cudaOutputAux2,
+                                        width,
+                                        height);
+
+  calculate_k_product<<<gridSize, blockSize>>>(cudaA_X_X,
+                                               cudaA_Y_Y,
+                                               k,
+                                               cudaOutputAux3,
+                                               width,
+                                               height);
+
+  calculate_diff<<<gridSize, blockSize>>>(cudaOutputAux,
+                                          cudaOutputAux2,
+                                          cudaOutputAux3,
+                                          width,
+                                          height);
 }
+
+
 
 void threshold()
 {
 //TODO Ejercicio 3 calcular el umbral a R (cudaOutputAux)
+  dim3 blockSize(BLOCK_SIZE_X, BLOCK_SIZE_Y);
+  dim3 gridSize(width / BLOCK_SIZE_X, height / BLOCK_SIZE_Y);
+  threshold<<<gridSize, blockSize>>>(cudaOutputAux,
+                                     threshold,
+                                     width,
+                                     height);
+}
+
+__global__ void nonMaximaSupression(const float * const __restrict__ input,
+                                    const float * const __restrict__ features,
+                                    const size_t width,
+                                    const size_t height)
+{
+    const unsigned int x = blockIdx.x * blockDim.x + threadIdx.x;
+    const unsigned int y = blockIdx.y * blockDim.y + threadIdx.y;
+
+    Byte neighbours[8]; //todos menos si mismo
+
+    if((x > 0) && (x < (height - 1)) && (y > 0) && (y < (width - 1)))
+    {
+        neighbours[0]  = input[(y - 1) * width + (x - 1)];
+        neighbours[1]  = input[(y - 1) * width + x];
+        neighbours[2]  = input[(y - 1) * width +  (x + 1)];
+        neighbours[3]  = input[y * width + (x - 1)];
+        neighbours[4]  = input[y * width + (x + 1)];
+        neighbours[5]  = input[(y + 1) * width + (x - 1)];
+        neighbours[6]  = input[(y + 1) * width + x];
+        neighbours[7]  = input[(y + 1) * width + (x + 1)];
+
+        int is_max = 1;
+        for (unsigned int it = 0; it < 8 && is_max; ++it)
+              is_max += neighbours[it] < input[y * width + x];
+
+        if(is_max){
+            features[y * width + x] = input[y * width + x];
+        }
+        else
+        {
+            features[y * width + x] = 0.0f;
+        }
+    }
+    else
+        features[y * width + x] = 0.0f;
 }
 
 void nonMaximaSupression()
 {
-//TODO Ejercicio 4 calcular NMS a R (cudaOutputAux) y dejar R en el rango [0, 1]
+  //TODO Ejercicio 4 calcular NMS a R (cudaOutputAux) y dejar R en el rango [0, 1]
+  nonMaximaSupression<<<gridSize, blockSize>>>(cudaOutputAux,
+                                               cuda_features,
+                                               width,
+                                               height);
+  //TODO: falta implementar este kernel
+  normalize_R<<<>>>(cudaOutputAux,
+                    width,
+                    height)
 }
