@@ -373,7 +373,7 @@ void threshold()
 }
 
 __global__ void nonMaximaSupression(const float * const __restrict__ input,
-                                    const float * const __restrict__ features,
+                                    const int * const __restrict__ features,
                                     const size_t width,
                                     const size_t height)
 {
@@ -395,7 +395,7 @@ __global__ void nonMaximaSupression(const float * const __restrict__ input,
 
         int is_max = 1;
         for (unsigned int it = 0; it < 8 && is_max; ++it)
-              is_max += neighbours[it] < input[y * width + x];
+              is_max = neighbours[it] < input[y * width + x];
 
         if(is_max){
             features[y * width + x] = input[y * width + x];
@@ -409,6 +409,26 @@ __global__ void nonMaximaSupression(const float * const __restrict__ input,
         features[y * width + x] = 0.0f;
 }
 
+__global__ void normalize_R(float * const __restrict__ R,
+                            const float max,
+                            const float min,
+                            const size_t width,
+                            const size_t height)
+{
+  const unsigned int x = blockIdx.x * blockDim.x + threadIdx.x;
+  const unsigned int y = blockIdx.y * blockDim.y + threadIdx.y;
+
+  if((x > 0) && (x < (height - 1)) && (y > 0) && (y < (width - 1)))
+  {
+      R[y * width + x] = R[y * width + x] * (1.0 / (max - min)) - min / (max - min);
+  }
+  else
+  {
+      R[y * width + x] = 0.0f;
+  }
+
+}
+
 void nonMaximaSupression()
 {
   //TODO Ejercicio 4 calcular NMS a R (cudaOutputAux) y dejar R en el rango [0, 1]
@@ -416,8 +436,15 @@ void nonMaximaSupression()
                                                cuda_features,
                                                width,
                                                height);
-  //TODO: falta implementar este kernel
-  normalize_R<<<>>>(cudaOutputAux,
-                    width,
-                    height)
+  //TODO: implementar el reduce en CUDA
+  cudaMemcpy(output, cudaOutputAux, width * height * sizeof(float), cudaMemcpyDeviceToHost);
+  double min;
+  double max;
+  cv::minMaxIdx(R, &min, &max);
+
+  normalize_R<<<gridSize, blockSize>>>(cudaOutputAux,
+                                       min,
+                                       max,
+                                       width,
+                                       height)
 }
