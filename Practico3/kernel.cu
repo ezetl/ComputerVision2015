@@ -21,7 +21,7 @@ float* cudaA_X_X;
 float* cudaA_X_Y;
 float* cudaA_Y_Y;
 float* cuda_R;
-float* cuda_features;
+int* cudaFeatures;
 
 
 __global__ void gaussianBlurKernel(const float* const __restrict__ input,
@@ -182,8 +182,12 @@ __global__ void threshold_cuda(float * const R,
     }
 }
 
+/*
+   Guarda en features un 1 si ese pixel es maximo o 0 en c.c.
+   Util para graficar mas adelante.
+ */
 __global__ void nonMaximaSupression_cuda(const float * const __restrict__ input,
-                                         float * const __restrict__ features,
+                                         int * const __restrict__ features,
                                          const size_t width,
                                          const size_t height)
 {
@@ -207,16 +211,10 @@ __global__ void nonMaximaSupression_cuda(const float * const __restrict__ input,
         for (unsigned int it = 0; it < 8 && is_max; ++it)
               is_max = neighbours[it] < input[y * width + x];
 
-        if(is_max){
-            features[y * width + x] = input[y * width + x];
-        }
-        else
-        {
-            features[y * width + x] = 0.0f;
-        }
+        features[y * width + x] = is_max; 
     }
     else
-        features[y * width + x] = 0.0f;
+        features[y * width + x] = 0;
 }
 
 __global__ void normalize_R(float * const __restrict__ R,
@@ -243,7 +241,8 @@ void harrisCornersFilter(const float* const image,
                          const size_t imageWidth,
                          const size_t imageHeight,
                          const float* const gaussianKernel,
-                         float* output)
+                         float* output,
+                         int* features)
 {
     //Inicializacion de memoria
 
@@ -264,7 +263,7 @@ void harrisCornersFilter(const float* const image,
     cudaMalloc(reinterpret_cast<void**>(&cudaA_X_Y), width * height * sizeof(float));
     cudaMalloc(reinterpret_cast<void**>(&cudaA_Y_Y), width * height * sizeof(float));
     cudaMalloc(reinterpret_cast<void**>(&cuda_R), width * height * sizeof(float));
-    cudaMalloc(reinterpret_cast<void**>(&cuda_features), width * height * sizeof(float));
+    cudaMalloc(reinterpret_cast<void**>(&cudaFeatures), width * height * sizeof(int));
 
     float sobelKernelX[] = {-1.0f, 0.0f, 1.0f,
                             -2.0f, 0.0f, 2.0f,
@@ -314,6 +313,7 @@ void harrisCornersFilter(const float* const image,
 
 //copiamos el resultado
     cudaMemcpy(output, cudaOutputAux, width * height * sizeof(float), cudaMemcpyDeviceToHost);
+    cudaMemcpy(features, cudaFeatures, width * height * sizeof(int), cudaMemcpyDeviceToHost);
 
 //Liberamos memoria
 
@@ -329,7 +329,7 @@ void harrisCornersFilter(const float* const image,
     cudaFree(cudaA_X_X);
     cudaFree(cudaA_X_Y);
     cudaFree(cudaA_Y_Y);
-    cudaFree(cuda_features);
+    cudaFree(cudaFeatures);
 }
 
 void gaussianBlurCuda(const float* const input,
@@ -437,10 +437,10 @@ void nonMaximaSupression()
   dim3 blockSize(BLOCK_SIZE_X, BLOCK_SIZE_Y);
   dim3 gridSize(width / BLOCK_SIZE_X, height / BLOCK_SIZE_Y);
   nonMaximaSupression_cuda<<<gridSize, blockSize>>>(cudaOutputAux,
-                                               cuda_features,
-                                               width,
-                                               height);
-  //TODO: implementar el reduce en CUDA
+                                                    cudaFeatures,
+                                                    width,
+                                                    height);
+  //TODO: implementar un reduce para max/min en CUDA
   cv::Mat R(width, height, CV_32FC1);
   cudaMemcpy(R.ptr<float>(), cudaOutputAux, width * height * sizeof(float), cudaMemcpyDeviceToHost);
   double min;

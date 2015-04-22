@@ -24,9 +24,8 @@ void gradientSobel(cv::Mat& img, cv::Mat& img_x, cv::Mat& img_y) {
   cv::Mat padding(img.rows, img.cols, CV_32FC1);
   copyMakeBorder(img, padding, 1, 1, 1, 1, IPL_BORDER_CONSTANT, cv::Scalar(0));
 
-  // Se puede usar OpenMP para acelerar un poco las cosas.
-  // Descomentar la linea de abajo para usar OpenMP:
-  //# pragma omp parallel for shared(padding, img_x, img_y)
+  // OpenMP para acelerar un poco las cosas.
+  # pragma omp parallel for shared(padding, img_x, img_y)
   for (int i = 1; i < padding.rows-1; ++i) {
     float* img_0 = padding.ptr<float>(i - 1);
     float* img_1 = padding.ptr<float>(i);
@@ -58,7 +57,7 @@ void gradientSobel_separable(cv::Mat& img, cv::Mat& img_x, cv::Mat& img_y) {
   cv::Mat aux_y(padding.rows, padding.cols, CV_32FC1);
 
   //1er pasada
-  //# pragma omp parallel for 
+  # pragma omp parallel for 
   for (int i = 1; i < padding.rows-1; ++i) {
     float* img_1 = padding.ptr<float>(i);
 
@@ -72,7 +71,7 @@ void gradientSobel_separable(cv::Mat& img, cv::Mat& img_x, cv::Mat& img_y) {
   }
 
   // 2da pasada
-  //# pragma omp parallel for 
+  # pragma omp parallel for 
   for (int i = 1; i < padding.rows-1; ++i) {
     float* img_0_x = aux_x.ptr<float>(i - 1);
     float* img_1_x = aux_x.ptr<float>(i);
@@ -130,6 +129,7 @@ int main(int argc, char** argv )
   // lee imagen del disco
   cv::Mat image;
   image = cv::imread(argv[1], CV_LOAD_IMAGE_COLOR);
+  cv::imwrite("features.tiff", image);
   if (image.data == NULL) {
     std::cout << "No image data" << std::endl;
     return -1;
@@ -149,8 +149,7 @@ int main(int argc, char** argv )
   cv::Mat im_x(image.rows, image.cols, CV_32FC1);
   cv::Mat im_y(image.rows, image.cols, CV_32FC1);
   // computo de derivadas espaciales
-  //gradientSobel_separable(gray_, im_x, im_y);
-  gradientSobel(gray_, im_x, im_y);
+  gradientSobel_separable(gray_, im_x, im_y);
 
   cv::Mat a11 = im_x.mul(im_x);
   cv::Mat a12 = im_x.mul(im_y);

@@ -18,7 +18,8 @@ typedef unsigned char Byte;
                              const size_t imageWidth,
                              const size_t imageHeight,
                              const float* const gaussianKernel,
-                             float* output);
+                             float* output,
+                             int* features);
 
 
 #endif  //UCI_CUDAKERNEL_H
