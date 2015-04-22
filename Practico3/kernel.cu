@@ -389,8 +389,6 @@ void calculateA()
 
 void calculateR()
 {
-//TODO Ejercicio 2 hacer el kernel para calcular R con la siguiente funcion y llamarlo.
-  // Guarda el resultado en  cudaOutputAux
   dim3 blockSize(BLOCK_SIZE_X, BLOCK_SIZE_Y);
   dim3 gridSize(width / BLOCK_SIZE_X, height / BLOCK_SIZE_Y);
   const float k = 0.04f;
@@ -422,10 +420,8 @@ void calculateR()
 }
 
 
-
 void threshold()
 {
-//TODO Ejercicio 3 calcular el umbral a R (cudaOutputAux)
   dim3 blockSize(BLOCK_SIZE_X, BLOCK_SIZE_Y);
   dim3 gridSize(width / BLOCK_SIZE_X, height / BLOCK_SIZE_Y);
   float thresh = 100.0;
@@ -436,12 +432,10 @@ void threshold()
 }
 
 
-
 void nonMaximaSupression()
 {
   dim3 blockSize(BLOCK_SIZE_X, BLOCK_SIZE_Y);
   dim3 gridSize(width / BLOCK_SIZE_X, height / BLOCK_SIZE_Y);
-  //TODO Ejercicio 4 calcular NMS a R (cudaOutputAux) y dejar R en el rango [0, 1]
   nonMaximaSupression_cuda<<<gridSize, blockSize>>>(cudaOutputAux,
                                                cuda_features,
                                                width,
