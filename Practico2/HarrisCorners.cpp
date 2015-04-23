@@ -24,14 +24,13 @@ void gradientSobel(cv::Mat& img, cv::Mat& img_x, cv::Mat& img_y) {
   cv::Mat padding(img.rows, img.cols, CV_32FC1);
   copyMakeBorder(img, padding, 1, 1, 1, 1, IPL_BORDER_CONSTANT, cv::Scalar(0));
 
-  // OpenMP para acelerar un poco las cosas.
   # pragma omp parallel for shared(padding, img_x, img_y)
   for (int i = 1; i < padding.rows-1; ++i) {
     float* img_0 = padding.ptr<float>(i - 1);
     float* img_1 = padding.ptr<float>(i);
     float* img_2 = padding.ptr<float>(i + 1);
 
-    // le resto la columna agregada por el padding
+    // no cuento la columna agregada por el padding
     float* img_x_1 = img_x.ptr<float>(i-1);
     float* img_y_1 = img_y.ptr<float>(i-1);
 
@@ -54,8 +53,7 @@ void gradientSobel_separable(cv::Mat& img, cv::Mat& img_x, cv::Mat& img_y) {
   copyMakeBorder(img, padding, 1, 1, 1, 1, IPL_BORDER_CONSTANT, cv::Scalar(0));
 
   cv::Mat aux_x(padding.rows, padding.cols, CV_32FC1);
-  cv::Mat aux_y(padding.rows, padding.cols, CV_32FC1);
-
+  cv::Mat aux_y(padding.rows, padding.cols, CV_32FC1); 
   //1er pasada
   # pragma omp parallel for 
   for (int i = 1; i < padding.rows-1; ++i) {
