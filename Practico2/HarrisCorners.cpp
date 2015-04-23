@@ -11,7 +11,7 @@ g++ -o HarrisCorners  HarrisCorners.cpp -lopencv_core -lopencv_imgproc -lopencv_
 #define SIGMA 9.0
 #define SIGMA1 2.0
 #define K_ 0.04
-#define THRESHOLD 500.0
+#define THRESHOLD 10000.0
 
 typedef unsigned char Byte;
 
@@ -129,7 +129,6 @@ int main(int argc, char** argv )
   // lee imagen del disco
   cv::Mat image;
   image = cv::imread(argv[1], CV_LOAD_IMAGE_COLOR);
-  cv::imwrite("features.tiff", image);
   if (image.data == NULL) {
     std::cout << "No image data" << std::endl;
     return -1;
