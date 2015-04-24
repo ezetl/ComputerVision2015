@@ -1,5 +1,5 @@
-#include <opencv2/opencv.hpp>
-
+#include <thrust/device_vector.h>
+#include <thrust/extrema.h>
 #include "kernel.h"
 
 /*
@@ -226,6 +226,7 @@ __global__ void normalize_R(float * const __restrict__ R,
   const unsigned int x = blockIdx.x * blockDim.x + threadIdx.x;
   const unsigned int y = blockIdx.y * blockDim.y + threadIdx.y;
 
+
   if((x > 0) && (x < (height - 1)) && (y > 0) && (y < (width - 1)))
   {
       R[y * width + x] = R[y * width + x] * (1.0 / (max - min)) - min / (max - min);
@@ -424,7 +425,7 @@ void threshold()
 {
   dim3 blockSize(BLOCK_SIZE_X, BLOCK_SIZE_Y);
   dim3 gridSize(width / BLOCK_SIZE_X, height / BLOCK_SIZE_Y);
-  float thresh = 100.0;
+  float thresh = 14000.0;
   threshold_cuda<<<gridSize, blockSize>>>(cudaOutputAux,
                                           thresh,
                                           width,
@@ -441,11 +442,12 @@ void nonMaximaSupression()
                                                     width,
                                                     height);
   //TODO: implementar un reduce para max/min en CUDA
-  cv::Mat R(width, height, CV_32FC1);
-  cudaMemcpy(R.ptr<float>(), cudaOutputAux, width * height * sizeof(float), cudaMemcpyDeviceToHost);
-  double min;
-  double max;
-  cv::minMaxIdx(R, &min, &max);
+  thrust::device_ptr<float> img = thrust::device_pointer_cast(cudaOutputAux);
+  thrust::device_vector<float>::iterator max_elem = thrust::max_element(img, img + width * height);
+  thrust::device_vector<float>::iterator min_elem = thrust::min_element(img, img + width * height); 
+
+  const float max = *max_elem;
+  const float min = *min_elem;
 
   normalize_R<<<gridSize, blockSize>>>(cudaOutputAux,
                                        min,
