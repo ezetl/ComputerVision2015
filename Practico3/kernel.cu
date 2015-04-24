@@ -441,7 +441,6 @@ void nonMaximaSupression()
                                                     cudaFeatures,
                                                     width,
                                                     height);
-  //TODO: implementar un reduce para max/min en CUDA
   thrust::device_ptr<float> img = thrust::device_pointer_cast(cudaOutputAux);
   thrust::device_vector<float>::iterator max_elem = thrust::max_element(img, img + width * height);
   thrust::device_vector<float>::iterator min_elem = thrust::min_element(img, img + width * height); 

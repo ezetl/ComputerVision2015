@@ -48,9 +48,9 @@ int main(int argc, char** argv )
 
     // Sigma 3.0
     std::vector<float> gaussianKernel ({
-					0.107035f, 0.113092f, 0.107035f,
-					0.113092f, 0.119491f, 0.113092f,
-					0.107035f, 0.113092f, 0.107035f
+					0.10f, 0.11f, 0.10f,
+					0.11f, 0.11f, 0.11f,
+					0.10f, 0.11f, 0.10f
                                       });
 
     //Output
@@ -72,16 +72,16 @@ int main(int argc, char** argv )
     std::cout<< "Duracion en GPU: " << (executionTime.count() / 1000) << " ms" << std::endl;
 
 
-    cv::namedWindow("Display Image", cv::WINDOW_AUTOSIZE );
-    cv::imshow("Display Image", image);
+    //cv::namedWindow("Display Image", cv::WINDOW_AUTOSIZE );
+    //cv::imshow("Display Image", image);
 
-    cv::namedWindow("Gray Image", cv::WINDOW_AUTOSIZE );
-    cv::imshow("Gray Image", gray);
+    //cv::namedWindow("Gray Image", cv::WINDOW_AUTOSIZE );
+    //cv::imshow("Gray Image", gray);
 
-    cv::namedWindow("Harris corners Image", cv::WINDOW_AUTOSIZE );
+    //cv::namedWindow("Harris corners Image", cv::WINDOW_AUTOSIZE );
     print_features(features, image);
-    //cv::imwrite("features.tiff", image);
-    cv::imshow("Harris corners Image", image);
+    cv::imwrite("./features.jpg", image);
+    //cv::imshow("Harris corners Image", image);
 
 
     cv::waitKey(0);

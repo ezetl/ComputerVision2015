@@ -12,7 +12,7 @@ link_directories( /usr/lib64 )
 link_directories( /usr/local/cuda/lib64 )
 
 SET(CUDA_64_BIT_DEVICE_CODE_DEFAULT ON)
-SET(CUDA_NVCC_FLAGS "-L/usr/lib64 -L/usr/local/cuda/lib64 -lcuda --ptxas-options=-v")
+SET(CUDA_NVCC_FLAGS "-L/usr/lib64 -L/usr/local/cuda/lib64 -lcuda -lcudart --ptxas-options=-v")
 
 message ("cuda path: ${CUDA_BIN_PATH}")
 
