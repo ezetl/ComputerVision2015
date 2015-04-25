@@ -4,14 +4,11 @@
 #include <cassert>
 #include <omp.h>
 
-/*
-g++ -o HarrisCorners  HarrisCorners.cpp -lopencv_core -lopencv_imgproc -lopencv_highgui -lgomp
- */
 
 #define SIGMA 9.0
 #define SIGMA1 2.0
 #define K_ 0.04
-#define THRESHOLD 10000.0
+#define THRESHOLD 800000.0
 
 typedef unsigned char Byte;
 
@@ -185,10 +182,9 @@ int main(int argc, char** argv )
   cv::namedWindow("Cornerness", cv::WINDOW_AUTOSIZE);
   cv::imshow("Cornerness", R_);
 
-  cv::Mat features = image;
-  print_features(features, harris_corners);
+  print_features(image, harris_corners);
   cv::namedWindow("Features", cv::WINDOW_AUTOSIZE);
-  cv::imshow("Features", features);
+  cv::imshow("Features", image);
 
   cv::waitKey(0);
 
