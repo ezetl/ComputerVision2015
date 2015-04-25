@@ -2,9 +2,6 @@
 #include <thrust/extrema.h>
 #include "kernel.h"
 
-/*
-   nvcc -c kernel.cu && 
- */
 
 size_t width;
 size_t height;
@@ -48,6 +45,8 @@ __global__ void gaussianBlurKernel(const float* const __restrict__ input,
         inputs[7]  = input[(y + 1) * width + x];
         inputs[8]  = input[(y + 1) * width + (x + 1)];
 
+        //TODO esto es un float????
+        //CHEQUEAR QUE EL GAUSSIANBLUR DE OPENCV EN EL PRACTICO 2 DEVUELVE VALORES MAYORES QUE 255
         unsigned int tempValue = 0;
         for (unsigned int it = 0; it < 9; ++it)
               tempValue += inputs[it] * gaussianKernel[it];
