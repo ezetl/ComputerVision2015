@@ -134,7 +134,7 @@ int main(int argc, char** argv )
   cv::cvtColor(image, gray, CV_BGR2GRAY);
 
   // Descomentar para sacar un poco mas de ruido:
-  GaussianBlur(gray, gray, cv::Size(), SIGMA1, SIGMA1, cv::BORDER_DEFAULT);
+  //GaussianBlur(gray, gray, cv::Size(), SIGMA1, SIGMA1, cv::BORDER_DEFAULT);
 
   // uint8 -> float
   cv::Mat gray_(image.rows, image.cols, CV_32FC1);
@@ -171,6 +171,7 @@ int main(int argc, char** argv )
   double min;
   double max;
   cv::minMaxIdx(R, &min, &max);
+  std::cout<<"min: "<<min<<" max: "<<max<<std::endl;
   cv::Mat R_;
   R.convertTo(R_, CV_32FC1, 1.0 / (max - min), -min / (max - min));
   cv::minMaxIdx(R_, &min, &max);

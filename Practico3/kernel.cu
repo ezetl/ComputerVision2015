@@ -52,10 +52,10 @@ __global__ void gaussianBlurKernel(const float* const __restrict__ input,
         for (unsigned int it = 0; it < 9; ++it)
               tempValue += inputs[it] * gaussianKernel[it];
 
-        output[y * width + x] = (tempValue > 255)?255:tempValue;
+        output[y * width + x] = (tempValue > 255.0)?255.0:tempValue;
     }
     else
-        output[y * width + x] = 255;
+        output[y * width + x] = 255.0;
 };
 
 __global__ void sobelKernel(const float* const __restrict__ input,
@@ -119,7 +119,7 @@ __global__ void cwiseProduct(const float* const matrix1,
         output[y * width + x] = 0.0f;
     }
 
-}
+};
 
 __global__ void calculate_k_product(const float * const __restrict__ matrix1,
                                     const float * const __restrict__ matrix2,
@@ -140,7 +140,7 @@ __global__ void calculate_k_product(const float * const __restrict__ matrix1,
     {
         output[y * width + x] = 0.0f;
     }
-}
+};
 
 __global__ void calculate_diff(float * const __restrict__ matrix1,
                                const float * const __restrict__ matrix2,
@@ -159,7 +159,7 @@ __global__ void calculate_diff(float * const __restrict__ matrix1,
     {
         matrix1[y * width + x] = 0.0f;
     }
-}
+};
 
 __global__ void threshold_cuda(float * const R,
                                const float threshold,
@@ -180,10 +180,10 @@ __global__ void threshold_cuda(float * const R,
     {
       R[y * width + x] = 0.0f;
     }
-}
+};
 
 /*
-   Guarda en features un 1 si ese pixel es maximo o 0 en c.c.
+   Almacena en features un 1 si ese pixel es maximo o 0 en c.c.
    Util para graficar mas adelante.
  */
 __global__ void nonMaximaSupression_cuda(const float * const __restrict__ input,
@@ -194,7 +194,7 @@ __global__ void nonMaximaSupression_cuda(const float * const __restrict__ input,
     const unsigned int x = blockIdx.x * blockDim.x + threadIdx.x;
     const unsigned int y = blockIdx.y * blockDim.y + threadIdx.y;
 
-    Byte neighbours[8]; //todos menos si mismo
+    float neighbours[8]; //todos menos si mismo
 
     if((x > 0) && (x < (height - 1)) && (y > 0) && (y < (width - 1)))
     {
@@ -215,7 +215,7 @@ __global__ void nonMaximaSupression_cuda(const float * const __restrict__ input,
     }
     else
         features[y * width + x] = 0;
-}
+};
 
 __global__ void normalize_R(float * const __restrict__ R,
                             const float max,
@@ -236,7 +236,7 @@ __global__ void normalize_R(float * const __restrict__ R,
       R[y * width + x] = 0.0f;
   }
 
-}
+};
 
 void harrisCornersFilter(const float* const image,
                          const size_t imageWidth,
@@ -281,14 +281,12 @@ void harrisCornersFilter(const float* const image,
     cudaMemcpy(cudaSobelX, sobelKernelX, 9 * sizeof(float), cudaMemcpyHostToDevice);
     cudaMemcpy(cudaSobelY, sobelKernelY, 9 * sizeof(float), cudaMemcpyHostToDevice);
 
-//Comienzo del calculo
+    //Comienzo del calculo
 
     gradientSobelCuda();
     cudaDeviceSynchronize();
 
     calculateA();
-
-    //tip: Agregar outputs y usar streams
 
     gaussianBlurCuda(cudaA_X_X,cudaOutputAux);
     cudaDeviceSynchronize();
@@ -312,12 +310,11 @@ void harrisCornersFilter(const float* const image,
     nonMaximaSupression();
     cudaDeviceSynchronize();
 
-//copiamos el resultado
+    //copiamos el resultado
     cudaMemcpy(output, cudaOutputAux, width * height * sizeof(float), cudaMemcpyDeviceToHost);
     cudaMemcpy(features, cudaFeatures, width * height * sizeof(int), cudaMemcpyDeviceToHost);
 
-//Liberamos memoria
-
+    //Liberamos memoria
     cudaFree(cudaInput);
     cudaFree(cudaOutputX);
     cudaFree(cudaOutputY);
@@ -364,8 +361,6 @@ void calculateA()
 {
   dim3 blockSize(BLOCK_SIZE_X, BLOCK_SIZE_Y);
   dim3 gridSize(width / BLOCK_SIZE_X, height / BLOCK_SIZE_Y);
-
-  //tip: Se pueden usar streams
 
   //cudaA_X_X = cudaOutputX * cudaOutputX;
   cwiseProduct<<<gridSize, blockSize>>>(cudaOutputX,
@@ -425,9 +420,8 @@ void threshold()
 {
   dim3 blockSize(BLOCK_SIZE_X, BLOCK_SIZE_Y);
   dim3 gridSize(width / BLOCK_SIZE_X, height / BLOCK_SIZE_Y);
-  float thresh = 14000.0;
   threshold_cuda<<<gridSize, blockSize>>>(cudaOutputAux,
-                                          thresh,
+                                          THRESHOLD,
                                           width,
                                           height);
 }

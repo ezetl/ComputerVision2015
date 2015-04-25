@@ -1,5 +1,6 @@
 #ifndef GAUSSIAN_KERNEL_H
 #define GAUSSIAN_KERNEL_H
+#define THRESHOLD 20000.0
 
 typedef unsigned char Byte;
 

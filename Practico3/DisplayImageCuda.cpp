@@ -42,9 +42,13 @@ int main(int argc, char** argv )
     cv::Mat gray_UINT8;
     cv::cvtColor(image, gray_UINT8, CV_BGR2GRAY);
 
+    // Descomentar para sacar un poco mas de ruido:
+    GaussianBlur(gray_UINT8, gray_UINT8, cv::Size(), 6.0, 6.0, cv::BORDER_DEFAULT);
+
     // uint8 -> float
     cv::Mat gray(image.rows, image.cols, CV_32FC1);
     gray_UINT8.convertTo(gray, CV_32F);
+
 
     // Sigma 3.0
     std::vector<float> gaussianKernel ({
