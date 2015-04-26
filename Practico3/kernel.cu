@@ -31,7 +31,7 @@ __global__ void gaussianBlurKernel(const float* const __restrict__ input,
     const unsigned int x = blockIdx.x * blockDim.x + threadIdx.x;
     const unsigned int y = blockIdx.y * blockDim.y + threadIdx.y;
 
-    Byte inputs[9];
+    float inputs[9];
 
     if((x > 0) && (x < (height - 1)) && (y > 0) && (y < (width - 1)))
     {
@@ -47,14 +47,13 @@ __global__ void gaussianBlurKernel(const float* const __restrict__ input,
 
         //TODO esto es un float????
         //CHEQUEAR QUE EL GAUSSIANBLUR DE OPENCV EN EL PRACTICO 2 DEVUELVE VALORES MAYORES QUE 255
-        unsigned int tempValue = 0;
+        float tempValue = 0;
         for (unsigned int it = 0; it < 9; ++it)
               tempValue += inputs[it] * gaussianKernel[it];
 
-        output[y * width + x] = (tempValue > 255.0)?255.0:tempValue;
+        //output[y * width + x] = (tempValue > 255.0)?255.0:tempValue;
+        output[y * width + x] = tempValue;
     }
-    else
-        output[y * width + x] = 255.0;
 };
 
 __global__ void sobelKernel(const float* const __restrict__ input,
