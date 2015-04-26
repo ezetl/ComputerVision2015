@@ -45,13 +45,10 @@ __global__ void gaussianBlurKernel(const float* const __restrict__ input,
         inputs[7]  = input[(y + 1) * width + x];
         inputs[8]  = input[(y + 1) * width + (x + 1)];
 
-        //TODO esto es un float????
-        //CHEQUEAR QUE EL GAUSSIANBLUR DE OPENCV EN EL PRACTICO 2 DEVUELVE VALORES MAYORES QUE 255
         float tempValue = 0;
         for (unsigned int it = 0; it < 9; ++it)
               tempValue += inputs[it] * gaussianKernel[it];
 
-        //output[y * width + x] = (tempValue > 255.0)?255.0:tempValue;
         output[y * width + x] = tempValue;
     }
 };
