@@ -90,11 +90,6 @@ __global__ void sobelKernel(const float* const __restrict__ input,
         outputX[y * width + x] = tempValueX;
         outputY[y * width + x] = tempValueY;
     }
-    else
-    {
-        outputX[y * width + x] = 0.0f;
-        outputY[y * width + x] = 0.0f;
-    }
 };
 
 __global__ void cwiseProduct(const float* const matrix1,
@@ -108,10 +103,6 @@ __global__ void cwiseProduct(const float* const matrix1,
     if((x > 0) && (x < (height - 1)) && (y > 0) && (y < (width - 1)))
     {
         output[y * width + x] = matrix1[y * width + x] * matrix2[y * width + x];
-    }
-    else
-    {
-        output[y * width + x] = 0.0f;
     }
 
 };
@@ -131,10 +122,6 @@ __global__ void calculate_k_product(const float * const __restrict__ matrix1,
         float aux = matrix1[y * width + x] + matrix2[y * width + x];
         output[y * width + x] = k * aux * aux; 
     }
-    else
-    {
-        output[y * width + x] = 0.0f;
-    }
 };
 
 __global__ void calculate_diff(float * const __restrict__ matrix1,
@@ -149,10 +136,6 @@ __global__ void calculate_diff(float * const __restrict__ matrix1,
     if((x > 0) && (x < (height - 1)) && (y > 0) && (y < (width - 1)))
     {
         matrix1[y * width + x] = matrix1[y * width + x] - matrix2[y * width + x] - matrix3[y * width + x]; 
-    }
-    else
-    {
-        matrix1[y * width + x] = 0.0f;
     }
 };
 
@@ -170,10 +153,6 @@ __global__ void threshold_cuda(float * const R,
       {
         R[y * width + x] = 0.0f; 
       }
-    }
-    else
-    {
-      R[y * width + x] = 0.0f;
     }
 };
 
@@ -208,8 +187,6 @@ __global__ void nonMaximaSupression_cuda(const float * const __restrict__ input,
 
         features[y * width + x] = is_max; 
     }
-    else
-        features[y * width + x] = 0;
 };
 
 __global__ void normalize_R(float * const __restrict__ R,
@@ -226,11 +203,6 @@ __global__ void normalize_R(float * const __restrict__ R,
   {
       R[y * width + x] = R[y * width + x] * (1.0 / (max - min)) - min / (max - min);
   }
-  else
-  {
-      R[y * width + x] = 0.0f;
-  }
-
 };
 
 void harrisCornersFilter(const float* const image,

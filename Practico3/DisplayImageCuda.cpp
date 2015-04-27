@@ -44,7 +44,7 @@ int main(int argc, char** argv )
     cv::cvtColor(image, gray_UINT8, CV_BGR2GRAY);
 
     // Descomentar para sacar un poco mas de ruido:
-    //GaussianBlur(gray_UINT8, gray_UINT8, cv::Size(), 6.0, 6.0, cv::BORDER_DEFAULT);
+    GaussianBlur(gray_UINT8, gray_UINT8, cv::Size(), 2.0, 2.0, cv::BORDER_DEFAULT);
 
     // uint8 -> float
     cv::Mat gray(image.rows, image.cols, CV_32FC1);
@@ -78,6 +78,7 @@ int main(int argc, char** argv )
     std::cout<< "Duracion en GPU: " << (executionTime.count() / 1000) << " ms" << std::endl;
 
 
+    /*
     cv::namedWindow("Display Image", cv::WINDOW_AUTOSIZE );
     cv::imshow("Display Image", image);
 
@@ -85,8 +86,10 @@ int main(int argc, char** argv )
     cv::imshow("Gray Image", gray);
 
     cv::namedWindow("Harris corners Image", cv::WINDOW_AUTOSIZE );
+    */
     print_features(features, image);
-    cv::imshow("Harris corners Image", image);
+    //cv::imshow("Harris corners Image", image);
+    cv::imwrite("features.jpg", image);
 
     cv::waitKey(0);
 
