@@ -1,0 +1,4 @@
+dado que thrust tambien chequea los maximos en los bordes, lo que hago es poner los bordes en cero antes de correr los reduce, asi me aseguro que no busco basura en los bordes (algo que me podria cambiar el maximo).
+
+
+Igual, no anda.
