@@ -138,9 +138,9 @@ int main(int argc, char** argv )
   //---------------------------------
 
   //cv::BFMatcher matcher(cv::NORM_L2);
-  cv::BFMatcher matcher(cv::NORM_HAMMING);
-  std::vector<cv::DMatch> matches;
-  matcher.match(desc1, desc2, matches);
+  //cv::BFMatcher matcher(cv::NORM_HAMMING);
+  //std::vector<cv::DMatch> matches;
+  //matcher.match(desc1, desc2, matches);
 
   // EJERCICIO 1: implementar matching por umbral sobre la relación entre
   // distancias al primero y segundo mejor descriptor.
@@ -149,7 +149,8 @@ int main(int argc, char** argv )
   // 3- ademas guardo la segunda mejor distancia
   // 4- creo un numero usando esas dos distancias: 1ra/2da. Si ese numero es menor que el threshold que elegi para filtrar distancias
   //    me quedo con eso? chequear
-  //matching(desc1, desc2, matches);
+  std::vector<cv::DMatch> matches;
+  matching(desc1, desc2, matches);
 
   // visualiza correspondencias
   cv::Mat im_matches;
