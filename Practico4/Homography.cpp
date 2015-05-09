@@ -5,6 +5,70 @@
 #include <opencv2/opencv.hpp>
 #include <opencv2/nonfree/features2d.hpp>
 
+unsigned char countHammDist(unsigned char n, unsigned char m)
+{
+  //http://stackoverflow.com/questions/19824740/counting-hamming-distance-for-8-bit-binary-values-in-c-language
+  unsigned char count = 0;
+  for(int i=0; i<8; ++i)
+    {
+      if((n&1)!=(m&1))
+      {
+        count++;
+      }
+    n >>= 1;
+    m >>= 1;
+  }
+  return count;
+}
+
+// EJERCICIO 1: implementar matching por umbral sobre la relación entre
+// distancias al primero y segundo mejor descriptor.
+// 1- calcular la distancia de un descriptor contra todos los de la otra imagen
+// 2- me quedo con la mejor (menor)
+// 3- ademas guardo la segunda mejor distancia
+// 4- creo un numero usando esas dos distancias: 1ra/2da. Si ese numero es menor que el threshold que elegi para filtrar distancias
+//    me quedo con eso? chequear
+// Se puede reutilizar el matcher y reordenarlo
+
+void matching(cv::Mat& desc1, cv::Mat& desc2, std::vector<cv::DMatch>& matches)
+{
+  // los descriptores son de 256 bits
+  unsigned char min_diff = 255;
+  unsigned char min_diff_2nd = 255;
+  unsigned char min_diff_index = 0;
+  unsigned char min_diff_2nd_index = 0;
+
+  cv::Size s1 = desc1.size();
+  cv::Size s2 = desc2.size();
+
+  // Iteramos sobre los descriptores armados? (o sea cada row es un descriptor)
+  // ademas, cada celda es un 8bit unsigned, lo mas chico. Creeria que cada celda guarda 8 ceros y unos.
+  for(int i=0; i<s1.height; ++i)
+  {
+    //fila para comparar con las otras
+    unsigned char* d1_ptr = desc1.ptr<unsigned char>(i);
+    for(int j=0;j<s2.height; ++j)
+    {
+      unsigned char diff = 0;
+      unsigned char* d2_ptr = desc2.ptr<unsigned char>(j);
+      // Por cada fila, ver cual es la hamming distance
+      for(int byte=0; byte<s2.width; ++byte) //da lo mismo que sea s1.width o s2.width, es el mismo ancho para los dos
+      {
+        //hamming distance byte a byte.
+        diff += countHammDist(d1_ptr[byte], d2_ptr[byte]); 
+      }
+      if(diff<min_diff)
+      {
+        min_diff_2nd = min_diff;
+        min_diff = diff;
+        min_diff_2nd_index = min_diff_index;
+        min_diff_index = j;
+      }
+    }
+    //TODO: hacer el calculo del ratio con min_diff y min_diff_2nd y ver que onda. Averiguar en internet que pinchila hay que hacer
+  }
+}
+
 int main(int argc, char** argv )
 {
   if (argc != 3) {
@@ -30,21 +94,23 @@ int main(int argc, char** argv )
   cv::cvtColor(im2_rgb, im2, CV_BGR2GRAY);
 
   //---------------------------------
-  // SIFT
+  // ORB 
   //---------------------------------
 
-  // // detect keypoints
-  // cv::SiftFeatureDetector detector;
-  // std::vector<cv::KeyPoint> kp1, kp2;
-  // detector.detect(im1, kp1);
-  // detector.detect(im2, kp2);
+  /*
+  cv::SiftFeatureDetector detector;
+  std::vector<cv::KeyPoint> kp1, kp2;
+  detector.detect(im1, kp1);
+  detector.detect(im2, kp2);
 
-  // // compute descriptores
-  // cv::SiftDescriptorExtractor extractor;
-  // cv::Mat desc1, desc2;
-  // extractor.compute(im1, kp1, desc1);
-  // extractor.compute(im2, kp2, desc2);
+  // compute descriptores
+  cv::SiftDescriptorExtractor extractor;
+  cv::Mat desc1, desc2;
+  extractor.compute(im1, kp1, desc1);
+  extractor.compute(im2, kp2, desc2);
+  */
 
+  // detect keypoints
   cv::ORB feat;
   std::vector<cv::KeyPoint> kp1, kp2;
   feat.detect(im1, kp1);
@@ -85,7 +151,7 @@ int main(int argc, char** argv )
   // 4- creo un numero usando esas dos distancias: 1ra/2da. Si ese numero es menor que el threshold que elegi para filtrar distancias
   //    me quedo con eso? chequear
   // Se puede reutilizar el matcher y reordenarlo
-
+  matching(desc1, desc2, matches);
 
   // visualiza correspondencias
   cv::Mat im_matches;
@@ -144,7 +210,6 @@ int main(int argc, char** argv )
   //   Rosten, E. and Drummond. T. "Machine learning for high-speed corner detection". ECCV 2006
   //   Alahi, A. and Ortiz, R. and Vandergheynst, P. "FREAK: Fast Retina Keypoint". CVPR 2012
 
-  // espera que se presiones una tecla
   std::cout << "\nPresione cualquier tecla para salir..." << std::endl;
   cv::waitKey(0);
   return 0;
