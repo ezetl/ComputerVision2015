@@ -21,25 +21,13 @@ unsigned char countHammDist(unsigned char n, unsigned char m)
   return count;
 }
 
-// EJERCICIO 1: implementar matching por umbral sobre la relación entre
-// distancias al primero y segundo mejor descriptor.
-// 1- calcular la distancia de un descriptor contra todos los de la otra imagen
-// 2- me quedo con la mejor (menor)
-// 3- ademas guardo la segunda mejor distancia
-// 4- creo un numero usando esas dos distancias: 1ra/2da. Si ese numero es menor que el threshold que elegi para filtrar distancias
-//    me quedo con eso? chequear
-// Se puede reutilizar el matcher y reordenarlo
-
+// EJERCICIO 1
 void matching(cv::Mat& desc1, cv::Mat& desc2, std::vector<cv::DMatch>& matches)
 {
-  // los descriptores son de 256 bits
-  unsigned char min_diff = 255;
-  unsigned char min_diff_2nd = 255;
-  unsigned char min_diff_index = 0;
-  unsigned char min_diff_2nd_index = 0;
-
   cv::Size s1 = desc1.size();
   cv::Size s2 = desc2.size();
+
+  std::vector<int> indexes;
 
   // Iteramos sobre los descriptores armados? (o sea cada row es un descriptor)
   // ademas, cada celda es un 8bit unsigned, lo mas chico. Creeria que cada celda guarda 8 ceros y unos.
@@ -47,10 +35,15 @@ void matching(cv::Mat& desc1, cv::Mat& desc2, std::vector<cv::DMatch>& matches)
   {
     //fila para comparar con las otras
     unsigned char* d1_ptr = desc1.ptr<unsigned char>(i);
+    // los descriptores son de 256 bits
+    unsigned char min_diff = 255;
+    unsigned char min_diff_2nd = 255;
+    unsigned char min_diff_index = 0;
+    unsigned char min_diff_2nd_index = 0;
     for(int j=0;j<s2.height; ++j)
     {
-      unsigned char diff = 0;
       unsigned char* d2_ptr = desc2.ptr<unsigned char>(j);
+      unsigned char diff = 0;
       // Por cada fila, ver cual es la hamming distance
       for(int byte=0; byte<s2.width; ++byte) //da lo mismo que sea s1.width o s2.width, es el mismo ancho para los dos
       {
@@ -66,6 +59,12 @@ void matching(cv::Mat& desc1, cv::Mat& desc2, std::vector<cv::DMatch>& matches)
       }
     }
     //TODO: hacer el calculo del ratio con min_diff y min_diff_2nd y ver que onda. Averiguar en internet que pinchila hay que hacer
+    //POR AHORA LO DEJO ASI, SIN EL RATIO PEDORRO ESE. PONGO LA MINIMA DISTANCIA ENCONTRADA
+    cv::DMatch dm;
+    dm.queryIdx = i;
+    dm.trainIdx = min_diff_index;
+    dm.distance = min_diff;
+    matches.push_back(dm);
   }
 }
 
@@ -150,8 +149,7 @@ int main(int argc, char** argv )
   // 3- ademas guardo la segunda mejor distancia
   // 4- creo un numero usando esas dos distancias: 1ra/2da. Si ese numero es menor que el threshold que elegi para filtrar distancias
   //    me quedo con eso? chequear
-  // Se puede reutilizar el matcher y reordenarlo
-  matching(desc1, desc2, matches);
+  //matching(desc1, desc2, matches);
 
   // visualiza correspondencias
   cv::Mat im_matches;
@@ -160,6 +158,7 @@ int main(int argc, char** argv )
   std::cout << matches.size() << " matches" << std::endl;
   cv::namedWindow("Matches", cv::WINDOW_AUTOSIZE);
   cv::imshow("Matches", im_matches);
+  cv::imwrite("Matches.jpg", im_matches);
 
   // -------------------------------
   // Homography
