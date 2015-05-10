@@ -5,6 +5,7 @@
 #include <opencv2/opencv.hpp>
 #include <opencv2/nonfree/features2d.hpp>
 
+// EJERCICIO 1
 unsigned char countHammDist(unsigned char n, unsigned char m)
 {
   //http://stackoverflow.com/questions/19824740/counting-hamming-distance-for-8-bit-binary-values-in-c-language
@@ -21,7 +22,6 @@ unsigned char countHammDist(unsigned char n, unsigned char m)
   return count;
 }
 
-// EJERCICIO 1
 void matching(cv::Mat& desc1, cv::Mat& desc2, std::vector<cv::DMatch>& matches)
 {
   cv::Size s1 = desc1.size();
@@ -58,7 +58,7 @@ void matching(cv::Mat& desc1, cv::Mat& desc2, std::vector<cv::DMatch>& matches)
         min_diff_index = j;
       }
     }
-    //TODO: hacer el calculo del ratio con min_diff y min_diff_2nd y ver que onda. Averiguar en internet que pinchila hay que hacer
+    //TODO: hacer el calculo del ratio con min_diff y min_diff_2nd y ver que onda. Averiguar que pinchila hay que hacer
     //POR AHORA LO DEJO ASI, SIN EL RATIO PEDORRO ESE. PONGO LA MINIMA DISTANCIA ENCONTRADA
     cv::DMatch dm;
     dm.queryIdx = i;
@@ -67,6 +67,33 @@ void matching(cv::Mat& desc1, cv::Mat& desc2, std::vector<cv::DMatch>& matches)
     matches.push_back(dm);
   }
 }
+
+//EJERCICIO 2
+float euclidean_distance(float x1, float y1, float x2, float y2)
+{
+  return sqrt((x1-x2)*(x1-x2) + (y1-y2)*(y1-y2));
+}
+
+float error_reproyeccion(cv::Mat& H, std::vector<cv::Point2f> points1, std::vector<cv::Point2f> points2)
+{
+  cv::Mat H_inv = H.inv();
+  float* H_0ptr = H_inv.ptr<float>(0);
+  float* H_1ptr = H_inv.ptr<float>(1);
+  float* H_2ptr = H_inv.ptr<float>(2);
+  float mean = 0.0;
+  for(int i=0; i<points2.size(); ++i)
+  {
+    // Reproyeccion. coord. homogenea
+    cv::Point3f r(points2[i].x, points2[i].y, 1);
+    r = cv::Point3f(H_0ptr[0]*r.x + H_0ptr[1]*r.y + H_0ptr[2],
+                    H_1ptr[0]*r.x + H_1ptr[1]*r.y + H_1ptr[2],
+                    H_2ptr[0]*r.x + H_2ptr[1]*r.y + H_2ptr[2]);
+    // Posible overflow? nah..
+    mean += euclidean_distance(r.x/r.z, r.y/r.z, points1[i].x, points1[i].y);
+  }
+  return mean / (float) points2.size();
+}
+
 
 int main(int argc, char** argv )
 {
@@ -127,11 +154,11 @@ int main(int argc, char** argv )
   cv::drawKeypoints(im1, kp1, im1_sift, cv::Scalar(0,255,0), 4);
   cv::drawKeypoints(im2, kp2, im2_sift, cv::Scalar(0,255,0), 4);
 
-  cv::namedWindow("SIFT KeyPoints @ im1", cv::WINDOW_AUTOSIZE);
-  cv::imshow("SIFT KeyPoints @ im1", im1_sift);
+  cv::namedWindow("ORB KeyPoints @ im1", cv::WINDOW_AUTOSIZE);
+  cv::imshow("ORB KeyPoints @ im1", im1_sift);
 
-  cv::namedWindow("SIFT KeyPoints @ im2", cv::WINDOW_AUTOSIZE);
-  cv::imshow("SIFT KeyPoints @ im2", im2_sift);
+  cv::namedWindow("ORB KeyPoints @ im2", cv::WINDOW_AUTOSIZE);
+  cv::imshow("ORB KeyPoints @ im2", im2_sift);
 
   //---------------------------------
   // Matching
@@ -159,7 +186,6 @@ int main(int argc, char** argv )
   std::cout << matches.size() << " matches" << std::endl;
   cv::namedWindow("Matches", cv::WINDOW_AUTOSIZE);
   cv::imshow("Matches", im_matches);
-  cv::imwrite("Matches.jpg", im_matches);
 
   // -------------------------------
   // Homography
@@ -167,7 +193,9 @@ int main(int argc, char** argv )
 
   std::vector<cv::Point2f> points1, points2;
   for (int i = 0; i < matches.size(); i++) {
+    //queryIdx es el de origen
     points1.push_back(kp1[matches[i].queryIdx].pt);
+    // trainIdx es el de destino
     points2.push_back(kp2[matches[i].trainIdx].pt);
   }
   cv::Mat H = cv::findHomography(points2, points1, CV_RANSAC, 1);
@@ -176,8 +204,10 @@ int main(int argc, char** argv )
   // los pares de puntos, b) solo los inliers, en base a la homografía estimada.
   // Comparar los métodos de matching.
   // error de reproyeccion: distancia euclidea entre el punto original y el de destino reproyectado en la imagen original (usando la inversa de la matriz H aplicada a x2 -punto de destino-).
-  // H.inverse o algo asi para calcular la inversa. 
-  // para considerar los inliers, tomar los menores que el threshold 1 (usado en findHomography)
+  // Entonces, en el paso anterior calculamos la H. Ahora quiero ver si esa H es masomenos precisa, computando el valor de H^-1 sobre cada coordenada x2 (de la imagen de destino) para ver si me da la misma que en la imagen uno. 
+  // TODO: para considerar los inliers, tomar los menores que el threshold 1 (usado en findHomography)
+  float error = error_reproyeccion(H, points1, points2);
+  std::cout<<"Error de reproyeccion: "<<error<<std::endl;
 
   // warping
   cv::Mat im_warp;
