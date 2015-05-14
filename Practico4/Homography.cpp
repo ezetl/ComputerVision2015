@@ -22,7 +22,10 @@ unsigned char countHammDist(unsigned char n, unsigned char m)
   return count;
 }
 
-void matching(cv::Mat& desc1, cv::Mat& desc2, std::vector<cv::DMatch>& matches)
+void matching(cv::Mat& desc1,
+              cv::Mat& desc2,
+              std::vector<cv::DMatch>& matches,
+              const float threshold)
 {
   cv::Size s1 = desc1.size();
   cv::Size s2 = desc2.size();
@@ -36,10 +39,10 @@ void matching(cv::Mat& desc1, cv::Mat& desc2, std::vector<cv::DMatch>& matches)
     //fila para comparar con las otras
     unsigned char* d1_ptr = desc1.ptr<unsigned char>(i);
     // los descriptores son de 256 bits
-    unsigned char min_diff = 255;
-    unsigned char min_diff_2nd = 255;
-    unsigned char min_diff_index = 0;
-    unsigned char min_diff_2nd_index = 0;
+    float min_diff = 256.0;
+    float min_diff_2nd = 256.0;
+    unsigned int min_diff_index = 0;
+    unsigned int min_diff_2nd_index = 0;
     for(int j=0;j<s2.height; ++j)
     {
       unsigned char* d2_ptr = desc2.ptr<unsigned char>(j);
@@ -58,13 +61,13 @@ void matching(cv::Mat& desc1, cv::Mat& desc2, std::vector<cv::DMatch>& matches)
         min_diff_index = j;
       }
     }
-    //TODO: hacer el calculo del ratio con min_diff y min_diff_2nd y ver que onda. Averiguar que pinchila hay que hacer
-    //POR AHORA LO DEJO ASI, SIN EL RATIO PEDORRO ESE. PONGO LA MINIMA DISTANCIA ENCONTRADA
-    cv::DMatch dm;
-    dm.queryIdx = i;
-    dm.trainIdx = min_diff_index;
-    dm.distance = min_diff;
-    matches.push_back(dm);
+    if((min_diff / min_diff_2nd) < threshold){
+      cv::DMatch dm;
+      dm.queryIdx = i;
+      dm.trainIdx = min_diff_index;
+      dm.distance = min_diff;
+      matches.push_back(dm);
+    }
   }
 }
 
@@ -95,6 +98,34 @@ float error_reproyeccion(cv::Mat& H, std::vector<cv::Point2f> points1, std::vect
 }
 
 
+float error_reproyeccion_inliers(cv::Mat& H,
+                                 std::vector<cv::Point2f> points1,
+                                 std::vector<cv::Point2f> points2,
+                                 const int threshold)
+{
+  cv::Mat H_inv = H.inv();
+  float* H_0ptr = H_inv.ptr<float>(0);
+  float* H_1ptr = H_inv.ptr<float>(1);
+  float* H_2ptr = H_inv.ptr<float>(2);
+  float mean = 0.0;
+  unsigned int N = 0;
+  for(int i=0; i<points2.size(); ++i)
+  {
+    // Considerar solo los puntos que estan a una distancia euclidea menor igual a 1 de points2[i]
+    float dist = euclidean_distance(points1[i].x, points1[i].y, points2[i].x, points2[i].y);
+    if(dist<=threshold)
+    {
+    // Reproyeccion. coord. homogenea
+    cv::Point3f r(points2[i].x, points2[i].y, 1);
+    r = cv::Point3f(H_0ptr[0]*r.x + H_0ptr[1]*r.y + H_0ptr[2],
+                    H_1ptr[0]*r.x + H_1ptr[1]*r.y + H_1ptr[2],
+                    H_2ptr[0]*r.x + H_2ptr[1]*r.y + H_2ptr[2]);
+    // Posible overflow? nah..
+    mean += euclidean_distance(r.x/r.z, r.y/r.z, points1[i].x, points1[i].y);
+    }
+  }
+  return mean / (float) points2.size();
+}
 int main(int argc, char** argv )
 {
   if (argc != 3) {
@@ -176,8 +207,9 @@ int main(int argc, char** argv )
   // 3- ademas guardo la segunda mejor distancia
   // 4- creo un numero usando esas dos distancias: 1ra/2da. Si ese numero es menor que el threshold que elegi para filtrar distancias
   //    me quedo con eso? chequear
+  const float threshold = 0.8;
   std::vector<cv::DMatch> matches;
-  matching(desc1, desc2, matches);
+  matching(desc1, desc2, matches, threshold);
 
   // visualiza correspondencias
   cv::Mat im_matches;
@@ -205,7 +237,6 @@ int main(int argc, char** argv )
   // Comparar los métodos de matching.
   // error de reproyeccion: distancia euclidea entre el punto original y el de destino reproyectado en la imagen original (usando la inversa de la matriz H aplicada a x2 -punto de destino-).
   // Entonces, en el paso anterior calculamos la H. Ahora quiero ver si esa H es masomenos precisa, computando el valor de H^-1 sobre cada coordenada x2 (de la imagen de destino) para ver si me da la misma que en la imagen uno. 
-  // TODO: para considerar los inliers, tomar los menores que el threshold 1 (usado en findHomography)
   float error = error_reproyeccion(H, points1, points2);
   std::cout<<"Error de reproyeccion: "<<error<<std::endl;
 
