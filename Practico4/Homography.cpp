@@ -6,7 +6,7 @@
 #include <opencv2/nonfree/features2d.hpp>
 
 // EJERCICIO 1
-unsigned char countHammDist(unsigned char n, unsigned char m)
+unsigned char hamming_distance(unsigned char n, unsigned char m)
 {
   //http://stackoverflow.com/questions/19824740/counting-hamming-distance-for-8-bit-binary-values-in-c-language
   unsigned char count = 0;
@@ -51,7 +51,7 @@ void matching(cv::Mat& desc1,
       for(int byte=0; byte<s2.width; ++byte) //da lo mismo que sea s1.width o s2.width, es el mismo ancho para los dos
       {
         //hamming distance byte a byte.
-        diff += countHammDist(d1_ptr[byte], d2_ptr[byte]); 
+        diff += hamming_distance(d1_ptr[byte], d2_ptr[byte]); 
       }
       if(diff<min_diff)
       {
@@ -77,7 +77,7 @@ float euclidean_distance(float x1, float y1, float x2, float y2)
   return sqrt((x1-x2)*(x1-x2) + (y1-y2)*(y1-y2));
 }
 
-float error_reproyeccion(cv::Mat& H, std::vector<cv::Point2f> points1, std::vector<cv::Point2f> points2)
+float reprojection_error(cv::Mat& H, std::vector<cv::Point2f> points1, std::vector<cv::Point2f> points2)
 {
   cv::Mat H_inv = H.inv();
   float* H_0ptr = H_inv.ptr<float>(0);
@@ -98,7 +98,7 @@ float error_reproyeccion(cv::Mat& H, std::vector<cv::Point2f> points1, std::vect
 }
 
 
-float error_reproyeccion_inliers(cv::Mat& H,
+float reprojection_error_inliers(cv::Mat& H,
                                  std::vector<cv::Point2f> points1,
                                  std::vector<cv::Point2f> points2,
                                  const int threshold)
@@ -237,7 +237,7 @@ int main(int argc, char** argv )
   // Comparar los métodos de matching.
   // error de reproyeccion: distancia euclidea entre el punto original y el de destino reproyectado en la imagen original (usando la inversa de la matriz H aplicada a x2 -punto de destino-).
   // Entonces, en el paso anterior calculamos la H. Ahora quiero ver si esa H es masomenos precisa, computando el valor de H^-1 sobre cada coordenada x2 (de la imagen de destino) para ver si me da la misma que en la imagen uno. 
-  float error = error_reproyeccion(H, points1, points2);
+  float error = reprojection_error(H, points1, points2);
   std::cout<<"Error de reproyeccion: "<<error<<std::endl;
 
   // warping
