@@ -32,8 +32,8 @@ void matching(cv::Mat& desc1,
 
   std::vector<int> indexes;
 
-  // Iteramos sobre los descriptores armados? (o sea cada row es un descriptor)
-  // ademas, cada celda es un 8bit unsigned, lo mas chico. Creeria que cada celda guarda 8 ceros y unos.
+  // Iteramos sobre los descriptores armados (o sea cada row es un descriptor)
+  // ademas, cada celda es un 8bit unsigned, lo mas chico. Cada celda guarda 8 ceros/unos.
   for(int i=0; i<s1.height; ++i)
   {
     //fila para comparar con las otras
@@ -87,45 +87,73 @@ float reprojection_error(cv::Mat& H, std::vector<cv::Point2f> points1, std::vect
   for(int i=0; i<points2.size(); ++i)
   {
     // Reproyeccion. coord. homogenea
-    cv::Point3f r(points2[i].x, points2[i].y, 1);
-    r = cv::Point3f(H_0ptr[0]*r.x + H_0ptr[1]*r.y + H_0ptr[2],
-                    H_1ptr[0]*r.x + H_1ptr[1]*r.y + H_1ptr[2],
-                    H_2ptr[0]*r.x + H_2ptr[1]*r.y + H_2ptr[2]);
-    // Posible overflow? nah..
+    cv::Point3f r = cv::Point3f(H_0ptr[0]*points2[i].x + H_0ptr[1]*points2[i].y + H_0ptr[2],
+                    H_1ptr[0]*points2[i].x + H_1ptr[1]*points2[i].y + H_1ptr[2],
+                    H_2ptr[0]*points2[i].x + H_2ptr[1]*points2[i].y + H_2ptr[2]);
+    // Tengo que dividir por la tercera coordenada para des-homogeneizar la coordenada
     mean += euclidean_distance(r.x/r.z, r.y/r.z, points1[i].x, points1[i].y);
   }
   return mean / (float) points2.size();
 }
 
+
+float reprojection_error2(cv::Mat& H, std::vector<cv::Point2f> points1, std::vector<cv::Point2f> points2)
+{
+  float* H_0ptr = H.ptr<float>(0);
+  float* H_1ptr = H.ptr<float>(1);
+  float* H_2ptr = H.ptr<float>(2);
+  float mean = 0.0;
+  for(int i=0; i<points2.size(); ++i)
+  {
+    // Reproyeccion. coord. homogenea
+    cv::Point3f r = cv::Point3f(H_0ptr[0]*points1[i].x + H_0ptr[1]*points1[i].y + H_0ptr[2],
+                                H_1ptr[0]*points1[i].x + H_1ptr[1]*points1[i].y + H_1ptr[2],
+                                H_2ptr[0]*points1[i].x + H_2ptr[1]*points1[i].y + H_2ptr[2]);
+    // Tengo que dividir por la tercera coordenada para des-homogeneizar
+    mean += euclidean_distance(r.x/r.z, r.y/r.z, points2[i].x, points2[i].y);
+  }
+  return mean / (float) points2.size();
+}
 
 float reprojection_error_inliers(cv::Mat& H,
                                  std::vector<cv::Point2f> points1,
                                  std::vector<cv::Point2f> points2,
-                                 const int threshold)
+                                 const float threshold)
 {
   cv::Mat H_inv = H.inv();
-  float* H_0ptr = H_inv.ptr<float>(0);
-  float* H_1ptr = H_inv.ptr<float>(1);
-  float* H_2ptr = H_inv.ptr<float>(2);
+  float* Hinv_0ptr = H_inv.ptr<float>(0);
+  float* Hinv_1ptr = H_inv.ptr<float>(1);
+  float* Hinv_2ptr = H_inv.ptr<float>(2);
+  float* H_0ptr = H.ptr<float>(0);
+  float* H_1ptr = H.ptr<float>(1);
+  float* H_2ptr = H.ptr<float>(2);
   float mean = 0.0;
   unsigned int N = 0;
   for(int i=0; i<points2.size(); ++i)
   {
-    // Considerar solo los puntos que estan a una distancia euclidea menor igual a 1 de points2[i]
-    float dist = euclidean_distance(points1[i].x, points1[i].y, points2[i].x, points2[i].y);
-    if(dist<=threshold)
-    {
-    // Reproyeccion. coord. homogenea
-    cv::Point3f r(points2[i].x, points2[i].y, 1);
-    r = cv::Point3f(H_0ptr[0]*r.x + H_0ptr[1]*r.y + H_0ptr[2],
-                    H_1ptr[0]*r.x + H_1ptr[1]*r.y + H_1ptr[2],
-                    H_2ptr[0]*r.x + H_2ptr[1]*r.y + H_2ptr[2]);
-    // Posible overflow? nah..
-    mean += euclidean_distance(r.x/r.z, r.y/r.z, points1[i].x, points1[i].y);
+    // primero ver si es un inlier
+    cv::Point3f r0 = cv::Point3f(H_0ptr[0]*points1[i].x + H_0ptr[1]*points1[i].y + H_0ptr[2],
+                                 H_1ptr[0]*points1[i].x + H_1ptr[1]*points1[i].y + H_1ptr[2],
+                                 H_2ptr[0]*points1[i].x + H_2ptr[1]*points1[i].y + H_2ptr[2]);
+    //distancia con respecto a el points2[i] correspondiente
+    float dist = euclidean_distance(r0.x/r0.z, r0.y/r0.z, points2[i].x, points2[i].y);
+    std::cout<<"dist: "<<dist<<std::endl;
+    if(dist<=threshold){
+      // Reproyeccion. coord. homogenea
+      cv::Point3f r = cv::Point3f(Hinv_0ptr[0]*points2[i].x + Hinv_0ptr[1]*points2[i].y + Hinv_0ptr[2],
+                                  Hinv_1ptr[0]*points2[i].x + Hinv_1ptr[1]*points2[i].y + Hinv_1ptr[2],
+                                  Hinv_2ptr[0]*points2[i].x + Hinv_2ptr[1]*points2[i].y + Hinv_2ptr[2]);
+      // Tengo que dividir por la tercera coordenada para des-homogeneizar la coordenada
+      mean += euclidean_distance(r.x/r.z, r.y/r.z, points1[i].x, points1[i].y);
+      N++;
     }
   }
-  return mean / (float) points2.size();
+  if(N==0){
+    std::cout<<"N igual a cero."<<std::endl;
+  }
+  return mean / (float) N;
 }
+
 int main(int argc, char** argv )
 {
   if (argc != 3) {
@@ -196,9 +224,9 @@ int main(int argc, char** argv )
   //---------------------------------
 
   //cv::BFMatcher matcher(cv::NORM_L2);
-  //cv::BFMatcher matcher(cv::NORM_HAMMING);
-  //std::vector<cv::DMatch> matches;
-  //matcher.match(desc1, desc2, matches);
+  cv::BFMatcher matcher(cv::NORM_HAMMING);
+  std::vector<cv::DMatch> matches;
+  matcher.match(desc1, desc2, matches);
 
   // EJERCICIO 1: implementar matching por umbral sobre la relación entre
   // distancias al primero y segundo mejor descriptor.
@@ -208,8 +236,8 @@ int main(int argc, char** argv )
   // 4- creo un numero usando esas dos distancias: 1ra/2da. Si ese numero es menor que el threshold que elegi para filtrar distancias
   //    me quedo con eso? chequear
   const float threshold = 0.8;
-  std::vector<cv::DMatch> matches;
-  matching(desc1, desc2, matches, threshold);
+  //std::vector<cv::DMatch> matches;
+  //matching(desc1, desc2, matches, threshold);
 
   // visualiza correspondencias
   cv::Mat im_matches;
@@ -237,7 +265,8 @@ int main(int argc, char** argv )
   // Comparar los métodos de matching.
   // error de reproyeccion: distancia euclidea entre el punto original y el de destino reproyectado en la imagen original (usando la inversa de la matriz H aplicada a x2 -punto de destino-).
   // Entonces, en el paso anterior calculamos la H. Ahora quiero ver si esa H es masomenos precisa, computando el valor de H^-1 sobre cada coordenada x2 (de la imagen de destino) para ver si me da la misma que en la imagen uno. 
-  float error = reprojection_error(H, points1, points2);
+  float error = reprojection_error2(H, points1, points2);
+//  float error = reprojection_error_inliers(H, points1, points2, 1.0);
   std::cout<<"Error de reproyeccion: "<<error<<std::endl;
 
   // warping
