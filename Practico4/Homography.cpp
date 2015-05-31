@@ -249,8 +249,8 @@ int main(int argc, char** argv )
   // EJERCICIO 2: computar error de reproyección promedio considerando: a) todos
   // los pares de puntos, b) solo los inliers, en base a la homografía estimada.
   // Comparar los métodos de matching.
-  //float error = reprojection_error(H, points1, points2);
-  float error = reprojection_error_inliers(H, points1, points2, 1.0);
+  float error = reprojection_error(H, points1, points2);
+  //float error = reprojection_error_inliers(H, points1, points2, 1.0);
   std::cout<<"Error de reproyeccion: "<<error<<std::endl;
 
   // warping
