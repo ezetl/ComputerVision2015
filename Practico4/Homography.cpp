@@ -39,8 +39,8 @@ void matching(cv::Mat& desc1,
     //fila para comparar con las otras
     unsigned char* d1_ptr = desc1.ptr<unsigned char>(i);
     // los descriptores son de 256 bits
-    float min_diff = 256.0;
-    float min_diff_2nd = 256.0;
+    unsigned int min_diff = 300;
+    unsigned int min_diff_2nd = 300;
     unsigned int min_diff_index = 0;
     unsigned int min_diff_2nd_index = 0;
     for(int j=0;j<s2.height; ++j)
@@ -61,7 +61,7 @@ void matching(cv::Mat& desc1,
         min_diff_index = j;
       }
     }
-    if((min_diff / min_diff_2nd) < threshold){
+    if(((float) min_diff / (float) min_diff_2nd) < threshold){
       cv::DMatch dm;
       dm.queryIdx = i;
       dm.trainIdx = min_diff_index;
@@ -74,29 +74,21 @@ void matching(cv::Mat& desc1,
 //EJERCICIO 2
 float euclidean_distance(float x1, float y1, float x2, float y2)
 {
-  return sqrt((x1-x2)*(x1-x2) + (y1-y2)*(y1-y2));
+  return sqrt((x2-x1)*(x2-x1) + (y2-y1)*(y2-y1));
 }
 
 float reprojection_error(cv::Mat& H, std::vector<cv::Point2f> points1, std::vector<cv::Point2f> points2)
 {
   cv::Mat H_inv = H.inv();
-  float* H_0ptr = H_inv.ptr<float>(0);
-  float* H_1ptr = H_inv.ptr<float>(1);
-  float* H_2ptr = H_inv.ptr<float>(2);
   float mean = 0.0;
   for(int i=0; i<points2.size(); ++i)
   {
     // Reproyeccion. coord. homogenea
-    cv::Point3f r = cv::Point3f(H_0ptr[0]*points2[i].x + H_0ptr[1]*points2[i].y + H_0ptr[2],
-                                H_1ptr[0]*points2[i].x + H_1ptr[1]*points2[i].y + H_1ptr[2],
-                                H_2ptr[0]*points2[i].x + H_2ptr[1]*points2[i].y + H_2ptr[2]);
-    /*
-    cv::Point3f r = cv::Point3f(H_0ptr[0]*points2[i].x + H_0ptr[1]*points2[i].y + H_0ptr[2],
-                                H_1ptr[0]*points2[i].x + H_1ptr[1]*points2[i].y + H_1ptr[2],
-                                H_2ptr[0]*points2[i].x + H_2ptr[1]*points2[i].y + H_2ptr[2]);
-    */
+    cv::Point3f r = cv::Point3f(H_inv.at<double>(0,0)*points2[i].x + H_inv.at<double>(0,1)*points2[i].y + H_inv.at<double>(0,2),
+                                H_inv.at<double>(1,0)*points2[i].x + H_inv.at<double>(1,1)*points2[i].y + H_inv.at<double>(1,2),
+                                H_inv.at<double>(2,0)*points2[i].x + H_inv.at<double>(2,1)*points2[i].y + H_inv.at<double>(2,2));
     // Tengo que dividir por la tercera coordenada para des-homogeneizar la coordenada
-    mean += euclidean_distance(r.x/(float)r.z, r.y/(float)r.z, points1[i].x, points1[i].y);
+    mean += euclidean_distance(r.x/r.z, r.y/r.z, points1[i].x, points1[i].y);
   }
   std::cout<<"mean: "<<mean<<" points2 size: "<<points2.size()<<std::endl;
   return mean / (float) points2.size();
@@ -105,16 +97,14 @@ float reprojection_error(cv::Mat& H, std::vector<cv::Point2f> points1, std::vect
 
 float reprojection_error2(cv::Mat& H, std::vector<cv::Point2f> points1, std::vector<cv::Point2f> points2)
 {
-  float* H_0ptr = H.ptr<float>(0);
-  float* H_1ptr = H.ptr<float>(1);
-  float* H_2ptr = H.ptr<float>(2);
-  float mean = 0.0;
+  double mean = 0.0;
   for(int i=0; i<points2.size(); ++i)
   {
     // Reproyeccion. coord. homogenea
-    cv::Point3f r = cv::Point3f(H_0ptr[0]*points1[i].x + H_0ptr[1]*points1[i].y + H_0ptr[2],
-                                H_1ptr[0]*points1[i].x + H_1ptr[1]*points1[i].y + H_1ptr[2],
-                                H_2ptr[0]*points1[i].x + H_2ptr[1]*points1[i].y + H_2ptr[2]);
+    cv::Point3f r = cv::Point3f(H.at<double>(0,0)*points1[i].x + H.at<double>(0,1)*points1[i].y + H.at<double>(0,2),
+                                H.at<double>(1,0)*points1[i].x + H.at<double>(1,1)*points1[i].y + H.at<double>(1,2),
+                                H.at<double>(2,0)*points1[i].x + H.at<double>(2,1)*points1[i].y + H.at<double>(2,2));
+    std::cout<<"Hpoints1 x: "<<r.x<<" Hpoints1 y: "<<r.y<<" Hpoints1 z: "<<r.z<<" points2 x: "<<points2[i].x<<" points2 y: "<<points2[i].y<<std::endl;
     // Tengo que dividir por la tercera coordenada para des-homogeneizar
     mean += euclidean_distance(r.x/r.z, r.y/r.z, points2[i].x, points2[i].y);
   }
@@ -128,28 +118,21 @@ float reprojection_error_inliers(cv::Mat& H,
 {
   //inliers: solo sumo los terminos tales que ||x1 - H.inv()*x2||<1
   cv::Mat H_inv = H.inv();
-  float* Hinv_0ptr = H_inv.ptr<float>(0);
-  float* Hinv_1ptr = H_inv.ptr<float>(1);
-  float* Hinv_2ptr = H_inv.ptr<float>(2);
-  float* H_0ptr = H.ptr<float>(0);
-  float* H_1ptr = H.ptr<float>(1);
-  float* H_2ptr = H.ptr<float>(2);
   float mean = 0.0;
   unsigned int N = 0;
   for(int i=0; i<points2.size(); ++i)
   {
     // primero ver si es un inlier
-    cv::Point3f r0 = cv::Point3f(H_0ptr[0]*points1[i].x + H_0ptr[1]*points1[i].y + H_0ptr[2],
-                                 H_1ptr[0]*points1[i].x + H_1ptr[1]*points1[i].y + H_1ptr[2],
-                                 H_2ptr[0]*points1[i].x + H_2ptr[1]*points1[i].y + H_2ptr[2]);
+    cv::Point3f r0 = cv::Point3f(H.at<double>(0,0)*points1[i].x + H.at<double>(0,1)*points1[i].y + H.at<double>(0,2),
+                                 H.at<double>(1,0)*points1[i].x + H.at<double>(1,1)*points1[i].y + H.at<double>(1,2),
+                                 H.at<double>(2,0)*points1[i].x + H.at<double>(2,1)*points1[i].y + H.at<double>(2,2));
     //distancia con respecto a el points2[i] correspondiente
-    float dist = euclidean_distance(r0.x/r0.z, r0.y/r0.z, points2[i].x, points2[i].y);
-    std::cout<<"dist: "<<dist<<std::endl;
+    float dist = euclidean_distance(r0.x/r0.z, r0.y, points2[i].x, points2[i].y);
     if(dist<=threshold){
       // Reproyeccion. coord. homogenea
-      cv::Point3f r = cv::Point3f(Hinv_0ptr[0]*points2[i].x + Hinv_0ptr[1]*points2[i].y + Hinv_0ptr[2],
-                                  Hinv_1ptr[0]*points2[i].x + Hinv_1ptr[1]*points2[i].y + Hinv_1ptr[2],
-                                  Hinv_2ptr[0]*points2[i].x + Hinv_2ptr[1]*points2[i].y + Hinv_2ptr[2]);
+      cv::Point3f r = cv::Point3f(H_inv.at<double>(0,0)*points2[i].x + H_inv.at<double>(0,1)*points2[i].y + H_inv.at<double>(0,2),
+                                  H_inv.at<double>(1,0)*points2[i].x + H_inv.at<double>(1,1)*points2[i].y + H_inv.at<double>(1,2),
+                                  H_inv.at<double>(2,0)*points2[i].x + H_inv.at<double>(2,1)*points2[i].y + H_inv.at<double>(2,2));
       // Tengo que dividir por la tercera coordenada para des-homogeneizar la coordenada
       mean += euclidean_distance(r.x/r.z, r.y/r.z, points1[i].x, points1[i].y);
       N++;
@@ -220,39 +203,34 @@ int main(int argc, char** argv )
   cv::drawKeypoints(im1, kp1, im1_sift, cv::Scalar(0,255,0), 4);
   cv::drawKeypoints(im2, kp2, im2_sift, cv::Scalar(0,255,0), 4);
 
-  //cv::namedWindow("ORB KeyPoints @ im1", cv::WINDOW_AUTOSIZE);
-  //cv::imshow("ORB KeyPoints @ im1", im1_sift);
+  cv::namedWindow("ORB KeyPoints @ im1", cv::WINDOW_AUTOSIZE);
+  cv::imshow("ORB KeyPoints @ im1", im1_sift);
 
-  //cv::namedWindow("ORB KeyPoints @ im2", cv::WINDOW_AUTOSIZE);
-  //cv::imshow("ORB KeyPoints @ im2", im2_sift);
+  cv::namedWindow("ORB KeyPoints @ im2", cv::WINDOW_AUTOSIZE);
+  cv::imshow("ORB KeyPoints @ im2", im2_sift);
 
   //---------------------------------
   // Matching
   //---------------------------------
 
   //Usar esto para SURF, los fast+freak y orb usan hamming, L2 es la suma absoluta al cuadrado cv::BFMatcher matcher(cv::NORM_L2);
-  //cv::BFMatcher matcher(cv::NORM_HAMMING);
-  //std::vector<cv::DMatch> matches;
-  //matcher.match(desc1, desc2, matches);
+  cv::BFMatcher matcher(cv::NORM_HAMMING);
+  std::vector<cv::DMatch> matches;
+  matcher.match(desc1, desc2, matches);
 
   // EJERCICIO 1: implementar matching por umbral sobre la relación entre
   // distancias al primero y segundo mejor descriptor.
-  // 1- calcular la distancia de un descriptor contra todos los de la otra imagen
-  // 2- me quedo con la mejor (menor)
-  // 3- ademas guardo la segunda mejor distancia
-  // 4- creo un numero usando esas dos distancias: 1ra/2da. Si ese numero es menor que el threshold que elegi para filtrar distancias
-  //    me quedo con eso? chequear
-  const float threshold = 0.8;
-  std::vector<cv::DMatch> matches;
-  matching(desc1, desc2, matches, threshold);
+  //const float threshold = 0.8;
+  //std::vector<cv::DMatch> matches;
+  //matching(desc1, desc2, matches, threshold);
 
   // visualiza correspondencias
   cv::Mat im_matches;
   cv::drawMatches(im1, kp1, im2, kp2, matches, im_matches);
 
   std::cout << matches.size() << " matches" << std::endl;
-  //cv::namedWindow("Matches", cv::WINDOW_AUTOSIZE);
-  //cv::imshow("Matches", im_matches);
+  cv::namedWindow("Matches", cv::WINDOW_AUTOSIZE);
+  cv::imshow("Matches", im_matches);
 
   // -------------------------------
   // Homography
@@ -265,15 +243,14 @@ int main(int argc, char** argv )
     // trainIdx es el de destino
     points2.push_back(kp2[matches[i].trainIdx].pt);
   }
+  assert(points1.size() == points2.size());
   cv::Mat H = cv::findHomography(points2, points1, CV_RANSAC, 1);
 
   // EJERCICIO 2: computar error de reproyección promedio considerando: a) todos
   // los pares de puntos, b) solo los inliers, en base a la homografía estimada.
   // Comparar los métodos de matching.
-  // error de reproyeccion: distancia euclidea entre el punto original y el de destino reproyectado en la imagen original (usando la inversa de la matriz H aplicada a x2 -punto de destino-).
-  // Entonces, en el paso anterior calculamos la H. Ahora quiero ver si esa H es masomenos precisa, computando el valor de H^-1 sobre cada coordenada x2 (de la imagen de destino) para ver si me da la misma que en la imagen uno. 
-  float error = reprojection_error(H, points1, points2);
-  //float error = reprojection_error_inliers(H, points1, points2, 1.0);
+  //float error = reprojection_error(H, points1, points2);
+  float error = reprojection_error_inliers(H, points1, points2, 1.0);
   std::cout<<"Error de reproyeccion: "<<error<<std::endl;
 
   // warping
@@ -297,8 +274,8 @@ int main(int argc, char** argv )
   float alpha = 0.25;
   cv::Mat view = im_warp(cv::Range(0, im1.rows), cv::Range(0, im1.cols));
   view = alpha*im1_rgb + (1.0-alpha)*view;
-  //cv::namedWindow("Warp", cv::WINDOW_AUTOSIZE);
-  //cv::imshow("Warp",im_warp);
+  cv::namedWindow("Warp", cv::WINDOW_AUTOSIZE);
+  cv::imshow("Warp",im_warp);
 
   // EJERCICIO 4: repetir pipeline usando otros pares de detector/descriptor:
   // SURF, ORB y FAST+FREAK. Cuidado con la métrica de comparación.
