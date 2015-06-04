@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <vector>
 #include <cassert>
+#include <algorithm>
 
 #include <opencv2/opencv.hpp>
 //#include <opencv2/nonfree/features2d.hpp>
@@ -11,21 +12,21 @@ unsigned char hamming_distance(unsigned char n, unsigned char m)
   //http://stackoverflow.com/questions/19824740/counting-hamming-distance-for-8-bit-binary-values-in-c-language
   unsigned char count = 0;
   for(int i=0; i<8; ++i)
+  {
+    if((n&1)!=(m&1))
     {
-      if((n&1)!=(m&1))
-      {
-        count++;
-      }
-    n >>= 1;
-    m >>= 1;
+      count++;
+    }
+  n >>= 1;
+  m >>= 1;
   }
   return count;
 }
 
 void matching(cv::Mat& desc1,
-              cv::Mat& desc2,
-              std::vector<cv::DMatch>& matches,
-              const float threshold)
+          cv::Mat& desc2,
+          std::vector<cv::DMatch>& matches,
+          const float threshold)
 {
   cv::Size s1 = desc1.size();
   cv::Size s2 = desc2.size();
@@ -77,6 +78,12 @@ float euclidean_distance(float x1, float y1, float x2, float y2)
   return sqrt((x2-x1)*(x2-x1) + (y2-y1)*(y2-y1));
 }
 
+cv::Point3f multiply_byH(cv::Mat H, cv::Point2f p){
+  return cv::Point3f(H.at<double>(0,0)*p.x + H.at<double>(0,1)*p.y + H.at<double>(0,2),
+                     H.at<double>(1,0)*p.x + H.at<double>(1,1)*p.y + H.at<double>(1,2),
+                     H.at<double>(2,0)*p.x + H.at<double>(2,1)*p.y + H.at<double>(2,2));
+}
+
 float reprojection_error(cv::Mat& H, std::vector<cv::Point2f> points1, std::vector<cv::Point2f> points2)
 {
   cv::Mat H_inv = H.inv();
@@ -84,9 +91,7 @@ float reprojection_error(cv::Mat& H, std::vector<cv::Point2f> points1, std::vect
   for(int i=0; i<points2.size(); ++i)
   {
     // Reproyeccion. coord. homogenea
-    cv::Point3f r = cv::Point3f(H_inv.at<double>(0,0)*points2[i].x + H_inv.at<double>(0,1)*points2[i].y + H_inv.at<double>(0,2),
-                                H_inv.at<double>(1,0)*points2[i].x + H_inv.at<double>(1,1)*points2[i].y + H_inv.at<double>(1,2),
-                                H_inv.at<double>(2,0)*points2[i].x + H_inv.at<double>(2,1)*points2[i].y + H_inv.at<double>(2,2));
+    cv::Point3f r = multiply_byH(H.inv(), points2[i]);
     // Tengo que dividir por la tercera coordenada para des-homogeneizar la coordenada
     mean += euclidean_distance(r.x/r.z, r.y/r.z, points1[i].x, points1[i].y);
   }
@@ -101,9 +106,7 @@ float reprojection_error2(cv::Mat& H, std::vector<cv::Point2f> points1, std::vec
   for(int i=0; i<points2.size(); ++i)
   {
     // Reproyeccion. coord. homogenea
-    cv::Point3f r = cv::Point3f(H.at<double>(0,0)*points1[i].x + H.at<double>(0,1)*points1[i].y + H.at<double>(0,2),
-                                H.at<double>(1,0)*points1[i].x + H.at<double>(1,1)*points1[i].y + H.at<double>(1,2),
-                                H.at<double>(2,0)*points1[i].x + H.at<double>(2,1)*points1[i].y + H.at<double>(2,2));
+    cv::Point3f r = multiply_byH(H, points1[i]);
     std::cout<<"Hpoints1 x: "<<r.x<<" Hpoints1 y: "<<r.y<<" Hpoints1 z: "<<r.z<<" points2 x: "<<points2[i].x<<" points2 y: "<<points2[i].y<<std::endl;
     // Tengo que dividir por la tercera coordenada para des-homogeneizar
     mean += euclidean_distance(r.x/r.z, r.y/r.z, points2[i].x, points2[i].y);
@@ -112,9 +115,9 @@ float reprojection_error2(cv::Mat& H, std::vector<cv::Point2f> points1, std::vec
 }
 
 float reprojection_error_inliers(cv::Mat& H,
-                                 std::vector<cv::Point2f> points1,
-                                 std::vector<cv::Point2f> points2,
-                                 const float threshold)
+                             std::vector<cv::Point2f> points1,
+                             std::vector<cv::Point2f> points2,
+                             const float threshold)
 {
   //inliers: solo sumo los terminos tales que ||x1 - H.inv()*x2||<1
   cv::Mat H_inv = H.inv();
@@ -123,16 +126,12 @@ float reprojection_error_inliers(cv::Mat& H,
   for(int i=0; i<points2.size(); ++i)
   {
     // primero ver si es un inlier
-    cv::Point3f r0 = cv::Point3f(H.at<double>(0,0)*points1[i].x + H.at<double>(0,1)*points1[i].y + H.at<double>(0,2),
-                                 H.at<double>(1,0)*points1[i].x + H.at<double>(1,1)*points1[i].y + H.at<double>(1,2),
-                                 H.at<double>(2,0)*points1[i].x + H.at<double>(2,1)*points1[i].y + H.at<double>(2,2));
+    cv::Point3f r0 = multiply_byH(H, points1[i]);
     //distancia con respecto a el points2[i] correspondiente
     float dist = euclidean_distance(r0.x/r0.z, r0.y, points2[i].x, points2[i].y);
     if(dist<=threshold){
       // Reproyeccion. coord. homogenea
-      cv::Point3f r = cv::Point3f(H_inv.at<double>(0,0)*points2[i].x + H_inv.at<double>(0,1)*points2[i].y + H_inv.at<double>(0,2),
-                                  H_inv.at<double>(1,0)*points2[i].x + H_inv.at<double>(1,1)*points2[i].y + H_inv.at<double>(1,2),
-                                  H_inv.at<double>(2,0)*points2[i].x + H_inv.at<double>(2,1)*points2[i].y + H_inv.at<double>(2,2));
+      cv::Point3f r = multiply_byH(H.inv(), points2[i]);
       // Tengo que dividir por la tercera coordenada para des-homogeneizar la coordenada
       mean += euclidean_distance(r.x/r.z, r.y/r.z, points1[i].x, points1[i].y);
       N++;
@@ -172,7 +171,7 @@ int main(int argc, char** argv )
   // ORB 
   //---------------------------------
 
-  /*
+/*
   cv::SiftFeatureDetector detector;
   std::vector<cv::KeyPoint> kp1, kp2;
   detector.detect(im1, kp1);
@@ -183,7 +182,7 @@ int main(int argc, char** argv )
   cv::Mat desc1, desc2;
   extractor.compute(im1, kp1, desc1);
   extractor.compute(im2, kp2, desc2);
-  */
+*/
 
   // detect keypoints
   cv::ORB feat;
@@ -203,11 +202,12 @@ int main(int argc, char** argv )
   cv::drawKeypoints(im1, kp1, im1_sift, cv::Scalar(0,255,0), 4);
   cv::drawKeypoints(im2, kp2, im2_sift, cv::Scalar(0,255,0), 4);
 
-  cv::namedWindow("ORB KeyPoints @ im1", cv::WINDOW_AUTOSIZE);
-  cv::imshow("ORB KeyPoints @ im1", im1_sift);
+  //cv::namedWindow("ORB KeyPoints @ im1", cv::WINDOW_AUTOSIZE);
+  //cv::imshow("ORB KeyPoints @ im1", im1_sift);
+  cv::imwrite("keypoints1.jpg", im1_sift);
 
-  cv::namedWindow("ORB KeyPoints @ im2", cv::WINDOW_AUTOSIZE);
-  cv::imshow("ORB KeyPoints @ im2", im2_sift);
+  //cv::namedWindow("ORB KeyPoints @ im2", cv::WINDOW_AUTOSIZE);
+  //cv::imshow("ORB KeyPoints @ im2", im2_sift);
 
   //---------------------------------
   // Matching
@@ -229,8 +229,9 @@ int main(int argc, char** argv )
   cv::drawMatches(im1, kp1, im2, kp2, matches, im_matches);
 
   std::cout << matches.size() << " matches" << std::endl;
-  cv::namedWindow("Matches", cv::WINDOW_AUTOSIZE);
-  cv::imshow("Matches", im_matches);
+  //cv::namedWindow("Matches", cv::WINDOW_AUTOSIZE);
+  //cv::imshow("Matches", im_matches);
+  cv::imwrite("matches.jpg", im_matches);
 
   // -------------------------------
   // Homography
@@ -257,7 +258,60 @@ int main(int argc, char** argv )
   cv::Mat im_warp;
   int warp_width = 1.8 * im1.cols;
   int warp_height = 1.5 * im1.rows;
-  cv::warpPerspective(im2_rgb, im_warp, H, cv::Size(warp_width, warp_height));
+
+  //Veo a donde manda H los puntos de las esq.
+  cv::Point2f p1(0.0, (float)im1.rows);               //esq. sup. izq.
+  cv::Point2f p2((float)im1.cols, (float)im1.rows);   //esq. sup. der. 
+  cv::Point2f p3((float)im1.cols, 0.0);               //esq. inf. der.            
+  cv::Point2f p4(0.0,0.0);                            //esq. inf. izq.
+  cv::Point3f pf1 = multiply_byH(H,p1);
+  cv::Point3f pf2 = multiply_byH(H,p2);
+  cv::Point3f pf3 = multiply_byH(H,p3);
+  cv::Point3f pf4 = multiply_byH(H,p4);
+
+  //calculo el alto y ancho
+  std::cout<<"heights:"<<std::endl; 
+  std::cout<<"p1: "<<pf1.y<<" p2: "<<pf2.y<<" p3: " <<pf3.y<<" p4: "<<pf4.y<<std::endl;
+  std::cout<<"widths:"<<std::endl; 
+  std::cout<<"p1: "<<pf1.x<<" p2: "<<pf2.x<<" p3: " <<pf3.x<<" p4: "<<pf4.x<<std::endl;
+  float minx,miny,maxx,maxy;
+
+  //ojo: division por cero?
+
+  float pf1x, pf1y, pf2x, pf2y, pf3x, pf3y, pf4x, pf4y;
+  pf1x = (pf1.z!=0.0)?pf1.x/pf1.z:0.0;
+  pf1y = (pf1.z!=0.0)?pf1.y/pf1.z:0.0;
+  pf2x = (pf2.z!=0.0)?pf2.x/pf2.z:0.0;
+  pf2y = (pf2.z!=0.0)?pf2.y/pf2.z:0.0;
+  pf3x = (pf3.z!=0.0)?pf3.x/pf3.z:0.0;
+  pf3y = (pf3.z!=0.0)?pf3.y/pf3.z:0.0;
+  pf4x = (pf4.z!=0.0)?pf4.x/pf4.z:0.0;
+  pf4y = (pf4.z!=0.0)?pf4.y/pf4.z:0.0;
+
+  minx = std::min(pf1x, pf2x); minx = std::min(minx, pf3x); minx = std::min(minx, pf4x);
+  maxx = std::max(pf1x, pf2x); maxx = std::max(maxx, pf3x); maxx = std::max(maxx, pf4x);
+  miny = std::min(pf1y, pf2y); miny = std::min(miny, pf3y); miny = std::min(miny, pf4y);
+  maxy = std::max(pf1y, pf2y); maxy = std::max(maxy, pf3y); maxy = std::max(maxy, pf4y);
+
+  std::cout<<"minx: "<<minx<<" maxx: "<<maxx<<" miny: "<<miny<<" maxy: "<<maxy<<std::endl;
+
+  warp_width = maxx - minx;
+  warp_height = maxy - miny;
+
+  //armo la H de translacion
+  cv::Mat Ht(3,3, CV_32F); 
+  Ht.at<double>(0,0) = 1.0 * H.at<double>(0,0);
+  Ht.at<double>(0,1) = 0.0 * H.at<double>(0,1);
+  Ht.at<double>(0,2) = (warp_width - im1.cols) * H.at<double>(0,2);
+  Ht.at<double>(1,0) = 0.0 * H.at<double>(1,0);
+  Ht.at<double>(1,1) = 1.0 * H.at<double>(1,1);
+  Ht.at<double>(1,2) = (warp_height - im1.rows) * H.at<double>(1,2);
+  Ht.at<double>(2,0) = 0.0 * H.at<double>(2,0);
+  Ht.at<double>(2,1) = 0.0 * H.at<double>(2,1);
+  Ht.at<double>(2,2) = 1.0 * H.at<double>(2,2);
+
+  cv::warpPerspective(im2_rgb, im_warp, Ht, cv::Size(warp_width, warp_height));
+  cv::imwrite("warpPerspective.jpg", im_warp);
 
   // EJERCICIO 3: calcular tamaño óptimo de la imagen transformada para que se vea
   // la imagen transformada *completa*. TIP: transformar el sistema de
@@ -266,16 +320,13 @@ int main(int argc, char** argv )
 
   // crear una nueva H 3x3 que componga HHtrans. 
 
-  // ver limites para la imagen grande de forma que aparezca TODA la transformacion.
-  // me interesa solo ver las puntas de los cuadrados.
-
-
   // blending
   float alpha = 0.25;
   cv::Mat view = im_warp(cv::Range(0, im1.rows), cv::Range(0, im1.cols));
   view = alpha*im1_rgb + (1.0-alpha)*view;
-  cv::namedWindow("Warp", cv::WINDOW_AUTOSIZE);
-  cv::imshow("Warp",im_warp);
+  //cv::namedWindow("Warp", cv::WINDOW_AUTOSIZE);
+  //cv::imshow("Warp",im_warp);
+  cv::imwrite("warp.jpg", im_warp);
 
   // EJERCICIO 4: repetir pipeline usando otros pares de detector/descriptor:
   // SURF, ORB y FAST+FREAK. Cuidado con la métrica de comparación.
