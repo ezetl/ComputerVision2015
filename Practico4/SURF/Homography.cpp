@@ -136,7 +136,6 @@ int main(int argc, char** argv )
   //---------------------------------
   // Matching
   //---------------------------------
-
   cv::BFMatcher matcher(cv::NORM_L2);
   std::vector<cv::DMatch> matches;
   matcher.match(desc1, desc2, matches);

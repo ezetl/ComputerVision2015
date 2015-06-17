@@ -136,8 +136,6 @@ int main(int argc, char** argv )
   //---------------------------------
   // Matching
   //---------------------------------
-
-  //Usar esto para SURF, los fast+freak y orb usan hamming, L2 es la suma absoluta al cuadrado cv::BFMatcher matcher(cv::NORM_L2);
   cv::BFMatcher matcher(cv::NORM_L2);
   std::vector<cv::DMatch> matches;
   matcher.match(desc1, desc2, matches);
