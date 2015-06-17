@@ -214,23 +214,22 @@ int main(int argc, char** argv )
   //---------------------------------
 
   //Usar esto para SURF, los fast+freak y orb usan hamming, L2 es la suma absoluta al cuadrado cv::BFMatcher matcher(cv::NORM_L2);
-  cv::BFMatcher matcher(cv::NORM_HAMMING);
-  std::vector<cv::DMatch> matches;
-  matcher.match(desc1, desc2, matches);
-
-  // EJERCICIO 1: implementar matching por umbral sobre la relación entre
-  // distancias al primero y segundo mejor descriptor.
-  //const float threshold = 0.8;
+  //cv::BFMatcher matcher(cv::NORM_HAMMING);
   //std::vector<cv::DMatch> matches;
-  //matching(desc1, desc2, matches, threshold);
+  //matcher.match(desc1, desc2, matches);
+
+  // EJERCICIO 1
+  const float threshold = 0.8;
+  std::vector<cv::DMatch> matches;
+  matching(desc1, desc2, matches, threshold);
 
   // visualiza correspondencias
   cv::Mat im_matches;
   cv::drawMatches(im1, kp1, im2, kp2, matches, im_matches);
 
   std::cout << matches.size() << " matches" << std::endl;
-  //cv::namedWindow("Matches", cv::WINDOW_AUTOSIZE);
-  //cv::imshow("Matches", im_matches);
+  cv::namedWindow("Matches", cv::WINDOW_AUTOSIZE);
+  cv::imshow("Matches", im_matches);
   cv::imwrite("matches.jpg", im_matches);
 
   // -------------------------------
@@ -247,9 +246,7 @@ int main(int argc, char** argv )
   assert(points1.size() == points2.size());
   cv::Mat H = cv::findHomography(points2, points1, CV_RANSAC, 1);
 
-  // EJERCICIO 2: computar error de reproyección promedio considerando: a) todos
-  // los pares de puntos, b) solo los inliers, en base a la homografía estimada.
-  // Comparar los métodos de matching.
+  // EJERCICIO 2
   float error = reprojection_error(H, points1, points2);
   //float error = reprojection_error_inliers(H, points1, points2, 1.0);
   std::cout<<"Error de reproyeccion: "<<error<<std::endl;
@@ -257,72 +254,40 @@ int main(int argc, char** argv )
   // warping
   cv::Mat im_warp;
 
+  // EJERCICIO 3
   //Veo a donde manda H los puntos de las esq.
-  cv::Point2f p1(0.0,0.0);                            //esq. inf. izq.
-  cv::Point2f p2((float)im1.cols, 0.0);               //esq. inf. der.            
-  cv::Point2f p3((float)im1.cols, (float)im1.rows);   //esq. sup. der. 
-  cv::Point2f p4(0.0, (float)im1.rows);               //esq. sup. izq.
+  cv::Point2f p1(0.0,0.0);
+  cv::Point2f p2((float)im1.cols, 0.0);
+  cv::Point2f p3((float)im1.cols, (float)im1.rows);
+  cv::Point2f p4(0.0, (float)im1.rows);
   cv::Point3f pf1 = multiply_byH(H,p1);
   cv::Point3f pf2 = multiply_byH(H,p2);
   cv::Point3f pf3 = multiply_byH(H,p3);
   cv::Point3f pf4 = multiply_byH(H,p4);
 
   //calculo el alto y ancho
-  std::cout<<"heights:"<<std::endl; 
-  std::cout<<"p1: "<<pf1.y/pf1.z<<" p2: "<<pf2.y/pf2.z<<" p3: " <<pf3.y/pf3.z<<" p4: "<<pf4.y/pf4.z<<std::endl;
-  std::cout<<"widths:"<<std::endl; 
-  std::cout<<"p1: "<<pf1.x/pf1.z<<" p2: "<<pf2.x/pf2.z<<" p3: " <<pf3.x/pf3.z<<" p4: "<<pf4.x/pf4.z<<std::endl;
   float minx,miny,maxx,maxy;
-
-/*
-  //ojo: division por cero?
-  float pf1x, pf1y, pf2x, pf2y, pf3x, pf3y, pf4x, pf4y;
-  pf1x = (pf1.z!=0.0)?pf1.x/pf1.z:0.0;
-  pf1y = (pf1.z!=0.0)?pf1.y/pf1.z:0.0;
-  pf2x = (pf2.z!=0.0)?pf2.x/pf2.z:0.0;
-  pf2y = (pf2.z!=0.0)?pf2.y/pf2.z:0.0;
-  pf3x = (pf3.z!=0.0)?pf3.x/pf3.z:0.0;
-  pf3y = (pf3.z!=0.0)?pf3.y/pf3.z:0.0;
-  pf4x = (pf4.z!=0.0)?pf4.x/pf4.z:0.0;
-  pf4y = (pf4.z!=0.0)?pf4.y/pf4.z:0.0;
-  minx = std::min(pf1x, pf2x); minx = std::min(minx, pf3x); minx = std::min(minx, pf4x);
-  maxx = std::max(pf1x, pf2x); maxx = std::max(maxx, pf3x); maxx = std::max(maxx, pf4x);
-  miny = std::min(pf1y, pf2y); miny = std::min(miny, pf3y); miny = std::min(miny, pf4y);
-  maxy = std::max(pf1y, pf2y); maxy = std::max(maxy, pf3y); maxy = std::max(maxy, pf4y);
-*/
-
   minx = std::min(pf1.x/pf1.z, pf2.x/pf2.z); minx = std::min(minx, pf3.x/pf3.z); minx = std::min(minx, pf4.x/pf4.z);
   maxx = std::max(pf1.x/pf1.z, pf2.x/pf2.z); maxx = std::max(maxx, pf3.x/pf3.z); maxx = std::max(maxx, pf4.x/pf4.z);
   miny = std::min(pf1.y/pf1.z, pf2.y/pf2.z); miny = std::min(miny, pf3.y/pf3.z); miny = std::min(miny, pf4.y/pf4.z);
   maxy = std::max(pf1.y/pf1.z, pf2.y/pf2.z); maxy = std::max(maxy, pf3.y/pf3.z); maxy = std::max(maxy, pf4.y/pf4.z);
 
-  std::cout<<"minx: "<<minx<<" maxx: "<<maxx<<" miny: "<<miny<<" maxy: "<<maxy<<std::endl;
-
-  int warp_width = 1.8 * im1.cols;
-  int warp_height = 1.8 * im1.rows;
+  int warp_width = im1.cols - minx;
+  int warp_height = im1.rows - miny;
 
   //armo la H de translacion
   cv::Mat Ht(3,3, CV_64FC1); 
-  Ht.at<double>(0,0) = 1.0	;//* H.at<double>(0,0);
-  Ht.at<double>(0,1) = 0.0	;//* H.at<double>(0,1);
-  Ht.at<double>(0,2) = -minx	;//* H.at<double>(0,2); //(warp_width - im1.cols);
-  Ht.at<double>(1,0) = 0.0	;//* H.at<double>(1,0);
-  Ht.at<double>(1,1) = 1.0	;//* H.at<double>(1,1);
-  Ht.at<double>(1,2) = -miny	;//* H.at<double>(1,2); //(warp_height - im1.rows);
-  Ht.at<double>(2,0) = 0.0	;//* H.at<double>(2,0);
-  Ht.at<double>(2,1) = 0.0	;//* H.at<double>(2,1);
-  Ht.at<double>(2,2) = 1.0	;//* H.at<double>(2,2);
+  Ht.at<double>(0,0) = 1.0;
+  Ht.at<double>(0,1) = 0.0;
+  Ht.at<double>(0,2) = -minx;
+  Ht.at<double>(1,0) = 0.0;
+  Ht.at<double>(1,1) = 1.0;
+  Ht.at<double>(1,2) = -miny;
+  Ht.at<double>(2,0) = 0.0;
+  Ht.at<double>(2,1) = 0.0;
+  Ht.at<double>(2,2) = 1.0;
 
   cv::warpPerspective(im2_rgb, im_warp, Ht*H, cv::Size(warp_width, warp_height));
-  cv::namedWindow("WarpPerspective", cv::WINDOW_AUTOSIZE);
-  cv::imshow("WarpPerspective",im_warp);
-
-  // EJERCICIO 3: calcular tamaño óptimo de la imagen transformada para que se vea
-  // la imagen transformada *completa*. TIP: transformar el sistema de
-  // coordenadas de im1 e im2 al centro de la imagen y aplicar la transformación
-  // en ese marco de referencia.
-
-  // crear una nueva H 3x3 que componga HHtrans. 
 
   // blending
   float alpha = 0.25;
@@ -330,8 +295,6 @@ int main(int argc, char** argv )
   cv::warpPerspective(im1_rgb, im_warp2, Ht, cv::Size(warp_width, warp_height));
   cv::Mat view = im_warp(cv::Range(0, im1.rows), cv::Range(0, im1.cols));
   cv::Mat view2 = im_warp2(cv::Range(0, im2.rows), cv::Range(0, im2.cols));
-  cv::namedWindow("WarpPerspective2", cv::WINDOW_AUTOSIZE);
-  cv::imshow("WarpPerspective2",im_warp2);
   view = alpha*view2 + (1.0-alpha)*view;
   cv::namedWindow("Warp", cv::WINDOW_AUTOSIZE);
   cv::imshow("Warp",im_warp);
