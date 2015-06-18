@@ -4,7 +4,7 @@
 #include <algorithm>
 
 #include <opencv2/opencv.hpp>
-#include <opencv2/nonfree/features2d.hpp>
+//#include <opencv2/nonfree/features2d.hpp>
 
 
 //EJERCICIO 2
@@ -127,7 +127,6 @@ int main(int argc, char** argv )
 
   cv::namedWindow("FAST KeyPoints @ im1", cv::WINDOW_AUTOSIZE);
   cv::imshow("FAST KeyPoints @ im1", im1_sift);
-  cv::imwrite("keypoints1.jpg", im1_sift);
 
   cv::namedWindow("FAST KeyPoints @ im2", cv::WINDOW_AUTOSIZE);
   cv::imshow("FAST KeyPoints @ im2", im2_sift);
@@ -146,7 +145,6 @@ int main(int argc, char** argv )
   std::cout << matches.size() << " matches" << std::endl;
   cv::namedWindow("Matches", cv::WINDOW_AUTOSIZE);
   cv::imshow("Matches", im_matches);
-  cv::imwrite("matches.jpg", im_matches);
 
   // -------------------------------
   // Homography
@@ -214,16 +212,6 @@ int main(int argc, char** argv )
   view = alpha*view2 + (1.0-alpha)*view;
   cv::namedWindow("Warp", cv::WINDOW_AUTOSIZE);
   cv::imshow("Warp",im_warp);
-  cv::imwrite("warp.jpg", im_warp);
-
-  // EJERCICIO 4: repetir pipeline usando otros pares de detector/descriptor:
-  // SURF, ORB y FAST+FREAK. Cuidado con la métrica de comparación.
-  //
-  // Referencias:
-  //   Bay, H. and Tuytelaars, T. and Van Gool, L. “SURF: Speeded Up Robust Features”. ECCV 2006
-  //   Rublee, E. and Rabaud, V. and Konolige, K. and Bradski, G. "ORB: An efficient alternative to SIFT or SURF". ICCV 2011
-  //   Rosten, E. and Drummond. T. "Machine learning for high-speed corner detection". ECCV 2006
-  //   Alahi, A. and Ortiz, R. and Vandergheynst, P. "FREAK: Fast Retina Keypoint". CVPR 2012
 
   std::cout << "\nPresione cualquier tecla para salir..." << std::endl;
   cv::waitKey(0);

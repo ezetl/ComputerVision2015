@@ -170,20 +170,6 @@ int main(int argc, char** argv )
   //---------------------------------
   // ORB 
   //---------------------------------
-
-/*
-  cv::SiftFeatureDetector detector;
-  std::vector<cv::KeyPoint> kp1, kp2;
-  detector.detect(im1, kp1);
-  detector.detect(im2, kp2);
-
-  // compute descriptores
-  cv::SiftDescriptorExtractor extractor;
-  cv::Mat desc1, desc2;
-  extractor.compute(im1, kp1, desc1);
-  extractor.compute(im2, kp2, desc2);
-*/
-
   // detect keypoints
   cv::ORB feat;
   std::vector<cv::KeyPoint> kp1, kp2;
@@ -202,21 +188,15 @@ int main(int argc, char** argv )
   cv::drawKeypoints(im1, kp1, im1_sift, cv::Scalar(0,255,0), 4);
   cv::drawKeypoints(im2, kp2, im2_sift, cv::Scalar(0,255,0), 4);
 
-  //cv::namedWindow("ORB KeyPoints @ im1", cv::WINDOW_AUTOSIZE);
-  //cv::imshow("ORB KeyPoints @ im1", im1_sift);
-  cv::imwrite("keypoints1.jpg", im1_sift);
+  cv::namedWindow("ORB KeyPoints @ im1", cv::WINDOW_AUTOSIZE);
+  cv::imshow("ORB KeyPoints @ im1", im1_sift);
 
-  //cv::namedWindow("ORB KeyPoints @ im2", cv::WINDOW_AUTOSIZE);
-  //cv::imshow("ORB KeyPoints @ im2", im2_sift);
+  cv::namedWindow("ORB KeyPoints @ im2", cv::WINDOW_AUTOSIZE);
+  cv::imshow("ORB KeyPoints @ im2", im2_sift);
 
   //---------------------------------
   // Matching
   //---------------------------------
-
-  //Usar esto para SURF, los fast+freak y orb usan hamming, L2 es la suma absoluta al cuadrado cv::BFMatcher matcher(cv::NORM_L2);
-  //cv::BFMatcher matcher(cv::NORM_HAMMING);
-  //std::vector<cv::DMatch> matches;
-  //matcher.match(desc1, desc2, matches);
 
   // EJERCICIO 1
   const float threshold = 0.8;
@@ -230,7 +210,6 @@ int main(int argc, char** argv )
   std::cout << matches.size() << " matches" << std::endl;
   cv::namedWindow("Matches", cv::WINDOW_AUTOSIZE);
   cv::imshow("Matches", im_matches);
-  cv::imwrite("matches.jpg", im_matches);
 
   // -------------------------------
   // Homography
@@ -298,16 +277,6 @@ int main(int argc, char** argv )
   view = alpha*view2 + (1.0-alpha)*view;
   cv::namedWindow("Warp", cv::WINDOW_AUTOSIZE);
   cv::imshow("Warp",im_warp);
-  cv::imwrite("warp.jpg", im_warp);
-
-  // EJERCICIO 4: repetir pipeline usando otros pares de detector/descriptor:
-  // SURF, ORB y FAST+FREAK. Cuidado con la métrica de comparación.
-  //
-  // Referencias:
-  //   Bay, H. and Tuytelaars, T. and Van Gool, L. “SURF: Speeded Up Robust Features”. ECCV 2006
-  //   Rublee, E. and Rabaud, V. and Konolige, K. and Bradski, G. "ORB: An efficient alternative to SIFT or SURF". ICCV 2011
-  //   Rosten, E. and Drummond. T. "Machine learning for high-speed corner detection". ECCV 2006
-  //   Alahi, A. and Ortiz, R. and Vandergheynst, P. "FREAK: Fast Retina Keypoint". CVPR 2012
 
   std::cout << "\nPresione cualquier tecla para salir..." << std::endl;
   cv::waitKey(0);

@@ -128,7 +128,6 @@ int main(int argc, char** argv )
 
   cv::namedWindow("SIFT KeyPoints @ im1", cv::WINDOW_AUTOSIZE);
   cv::imshow("SIFT KeyPoints @ im1", im1_sift);
-  cv::imwrite("keypoints1.jpg", im1_sift);
 
   cv::namedWindow("SIFT KeyPoints @ im2", cv::WINDOW_AUTOSIZE);
   cv::imshow("SIFT KeyPoints @ im2", im2_sift);
@@ -147,7 +146,6 @@ int main(int argc, char** argv )
   std::cout << matches.size() << " matches" << std::endl;
   cv::namedWindow("Matches", cv::WINDOW_AUTOSIZE);
   cv::imshow("Matches", im_matches);
-  cv::imwrite("matches.jpg", im_matches);
 
   // -------------------------------
   // Homography
@@ -215,7 +213,6 @@ int main(int argc, char** argv )
   view = alpha*view2 + (1.0-alpha)*view;
   cv::namedWindow("Warp", cv::WINDOW_AUTOSIZE);
   cv::imshow("Warp",im_warp);
-  cv::imwrite("warp.jpg", im_warp);
 
   std::cout << "\nPresione cualquier tecla para salir..." << std::endl;
   cv::waitKey(0);
