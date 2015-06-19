@@ -153,8 +153,8 @@ int main(int argc, char** argv )
   miny = std::min(pf1.y/pf1.z, pf2.y/pf2.z); miny = std::min(miny, pf3.y/pf3.z); miny = std::min(miny, pf4.y/pf4.z);
   maxy = std::max(pf1.y/pf1.z, pf2.y/pf2.z); maxy = std::max(maxy, pf3.y/pf3.z); maxy = std::max(maxy, pf4.y/pf4.z);
 
-  int warp_width = 1.8 * im1.cols;
-  int warp_height = 1.8 * im1.rows;
+  int warp_width = std::max((int) im1.cols, (int) (maxx - minx));
+  int warp_height = std::max((int) im1.rows, (int) (maxy - miny));
 
   //armo la H de translacion
   cv::Mat Ht(3,3, CV_64FC1); 
