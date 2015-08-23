@@ -78,6 +78,8 @@ cv::Point3f multiply_byH(cv::Mat H, cv::Point2f p){
                      H.at<double>(2,0)*p.x + H.at<double>(2,1)*p.y + H.at<double>(2,2));
 }
 
+
+//Formula de error de reproyeccion: http://docs.opencv.org/modules/calib3d/doc/camera_calibration_and_3d_reconstruction.html#findhomography
 float reprojection_error(cv::Mat& H, std::vector<cv::Point2f> points1, std::vector<cv::Point2f> points2, const size_t match_size)
 {
   float total_err = 0.0;
